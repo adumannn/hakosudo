@@ -1,3 +1,5 @@
+import { computeUnifiedStreak } from "@/lib/seal/streak";
+
 export type AchievementKey =
   | "streak_7"
   | "streak_30"
@@ -172,23 +174,18 @@ function formatStampDate(iso: string): string {
   return `${day} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-function dailyStreakLength(dailyDates: string[]): number {
-  const set = new Set(dailyDates);
-  let n = 0;
-  const d = new Date();
-  while (set.has(d.toISOString().slice(0, 10))) {
-    n++;
-    d.setUTCDate(d.getUTCDate() - 1);
-  }
-  return n;
-}
-
-export function computeStatuses(games: GameRow[]): AchievementStatus[] {
+export function computeStatuses(
+  games: GameRow[],
+  opts: { today: string; frozen: Set<string> } = {
+    today: new Date().toISOString().slice(0, 10),
+    frozen: new Set(),
+  },
+): AchievementStatus[] {
   const completed = games.filter((g) => g.is_complete);
-  const dailyDates = completed
-    .filter((g) => g.daily_date)
-    .map((g) => g.daily_date!);
-  const streak = dailyStreakLength(dailyDates);
+  const dailyDates = new Set(
+    completed.filter((g) => g.daily_date).map((g) => g.daily_date!),
+  );
+  const streak = computeUnifiedStreak(opts.today, dailyDates, opts.frozen);
 
   const firstByDifficulty = (
     diff: string,
@@ -207,7 +204,7 @@ export function computeStatuses(games: GameRow[]): AchievementStatus[] {
     const cutoff = new Date();
     cutoff.setUTCDate(cutoff.getUTCDate() - days + 1);
     cutoff.setUTCHours(0, 0, 0, 0);
-    const eligible = dailyDates.filter(
+    const eligible = Array.from(dailyDates).filter(
       (d) => new Date(d) >= cutoff,
     );
     if (eligible.length < days) return undefined;
