@@ -9,8 +9,9 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   const sb = createServerClient();
   const {
-    data: { user },
-  } = await sb.auth.getUser();
+    data: { session },
+  } = await sb.auth.getSession();
+  const user = session?.user;
   if (!user) return new Response("Sign in to use the coach", { status: 401 });
 
   const { data: profile } = await sb
