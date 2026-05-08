@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
-import { formatTime } from "@/lib/utils";
+import { formatTime, todayUTC } from "@/lib/utils";
 import { kanjiNum } from "@/lib/kanji";
 import { Masthead } from "@/components/Masthead";
 import { Heatmap } from "@/components/stats/Heatmap";
@@ -11,6 +11,7 @@ import {
   DEMO_STATUSES,
   type GameRow,
 } from "@/lib/achievements";
+import { computeUnifiedStreak } from "@/lib/seal/streak";
 
 export const dynamic = "force-dynamic";
 
@@ -42,25 +43,41 @@ export default async function Profile() {
     xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
   const best = (xs: number[]) => (xs.length ? Math.min(...xs) : 0);
 
-  const days = new Set<string>(
-    completed.map((g) => g.created_at.slice(0, 10)),
+  // Fetch daily_results and streak_freezes for unified streak (last 730 days)
+  const today = todayUTC();
+  const windowStart = (() => {
+    const d = new Date(today + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - 730);
+    return d.toISOString().slice(0, 10);
+  })();
+  const [{ data: dailyResults }, { data: streakFreezes }] = await Promise.all([
+    sb
+      .from("daily_results")
+      .select("date")
+      .eq("user_id", user.id)
+      .gte("date", windowStart)
+      .lte("date", today),
+    sb
+      .from("streak_freezes")
+      .select("date")
+      .eq("user_id", user.id)
+      .gte("date", windowStart)
+      .lte("date", today),
+  ]);
+  const completedDates = new Set<string>(
+    ((dailyResults ?? []) as { date: string }[]).map((r) => r.date),
   );
-  let streak = 0;
-  const d = new Date();
-  while (days.has(d.toISOString().slice(0, 10))) {
-    streak++;
-    d.setUTCDate(d.getUTCDate() - 1);
-  }
+  const frozenDates = new Set<string>(
+    ((streakFreezes ?? []) as { date: string }[]).map((f) => f.date),
+  );
+  const streak = computeUnifiedStreak(today, completedDates, frozenDates);
 
   const totals = {
-    streak: streak || 22,
-    bestStreak: 41,
-    missed: 4,
-    solvedAll: completed.length || 186,
-    daily: completed.filter((g) => g.difficulty !== "casual").length || 142,
-    casual: 44,
-    expert: byDiff("expert").length || 8,
-    avgSecs: avg(completed.map((g) => g.elapsed_seconds)) || 11 * 60 + 42,
+    streak,
+    solvedAll: completed.length,
+    daily: completed.filter((g) => g.difficulty !== "casual").length,
+    expert: byDiff("expert").length,
+    avgSecs: avg(completed.map((g) => g.elapsed_seconds)),
   };
 
   const since = "6 february";
@@ -76,17 +93,6 @@ export default async function Profile() {
     const xs = byDiff(d).map((g) => g.elapsed_seconds);
     return { best: best(xs), avg: avg(xs), count: xs.length };
   };
-  const diffFallback: Record<
-    string,
-    { best: number; avg: number; count: number }
-  > = {
-    easy: { best: 138, avg: 230, count: 64 },
-    medium: { best: 342, avg: 431, count: 78 },
-    hard: { best: 554, avg: 822, count: 36 },
-    expert: { best: 1028, avg: 1290, count: 8 },
-  };
-  const merged = (k: string) =>
-    diffStats(k).count > 0 ? diffStats(k) : diffFallback[k];
 
   const statuses = completed.length > 0 ? computeStatuses(all) : DEMO_STATUSES;
   const earnedCount = statuses.filter((s) => s.earned).length;
@@ -120,8 +126,7 @@ export default async function Profile() {
               {kanjiNum(totals.streak)}
             </div>
             <div className="txt-small mt-2">
-              {totals.streak} days · best {totals.bestStreak} ·{" "}
-              {totals.missed} missed
+              {totals.streak} days
             </div>
           </div>
           <div className="md:border-r border-sumi/20 md:px-6 mt-6 md:mt-0">
@@ -130,8 +135,7 @@ export default async function Profile() {
               {totals.solvedAll}
             </div>
             <div className="txt-small mt-2">
-              {totals.daily} daily · {totals.casual} casual ·{" "}
-              {totals.expert} expert
+              {totals.daily} daily · {totals.expert} expert
             </div>
           </div>
           <div className="md:pl-6 mt-6 md:mt-0">
@@ -163,7 +167,7 @@ export default async function Profile() {
           </div>
           <div className="mt-3.5 flex justify-between items-center mono text-[10px] tracking-[0.18em] uppercase text-moss">
             <span>
-              {totals.missed} missed days · 2 ↻ catchups
+              2 ↻ catchups
             </span>
             <div className="flex gap-1.5 items-center">
               <span className="text-[10px]">less</span>
@@ -181,7 +185,7 @@ export default async function Profile() {
           <div className="eyebrow mb-3.5">best times by box</div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
             {diffs.map((d) => {
-              const stat = merged(d.key);
+              const stat = diffStats(d.key);
               return (
                 <div
                   key={d.key}
