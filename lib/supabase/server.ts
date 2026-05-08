@@ -48,6 +48,7 @@ function makeNullClient() {
   return {
     auth: {
       getUser: async () => ({ data: { user: null }, error: null }),
+      getSession: async () => ({ data: { session: null }, error: null }),
     },
     from: () => queryStub,
   } as any;

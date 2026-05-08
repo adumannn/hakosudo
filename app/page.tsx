@@ -27,8 +27,9 @@ function formatHMS(secs: number) {
 export default async function Home() {
   const sb = createServerClient();
   const {
-    data: { user },
-  } = await sb.auth.getUser();
+    data: { session },
+  } = await sb.auth.getSession();
+  const user = session?.user;
 
   const initial = user?.email?.[0] ?? "·";
   const dateString = dateLine();

@@ -17,9 +17,10 @@ export const dynamic = "force-dynamic";
 export default async function Profile() {
   const sb = createServerClient();
   const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) redirect("/auth/login");
+    data: { session },
+  } = await sb.auth.getSession();
+  if (!session) redirect("/auth/login");
+  const user = session.user;
 
   const initial = user.email?.[0] ?? "·";
   const username = user.email?.split("@")[0] ?? "duman";
@@ -29,7 +30,9 @@ export default async function Profile() {
     .select(
       "difficulty,is_complete,elapsed_seconds,errors_made,hints_used,daily_date,created_at",
     )
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   const all = (games ?? []) as GameRow[];
   const completed = all.filter((g) => g.is_complete);
