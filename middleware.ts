@@ -4,22 +4,40 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next({ request: req });
-  const sb = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+
+  // If env vars aren't configured (e.g. preview deploys without secrets),
+  // skip the auth refresh entirely instead of crashing the request.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return res;
+
+  try {
+    const sb = createServerClient(url, key, {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (cookies: { name: string; value: string; options: CookieOptions }[]) => {
-          cookies.forEach(({ name, value, options }) => res.cookies.set(name, value, options));
+        setAll: (
+          cookies: { name: string; value: string; options: CookieOptions }[]
+        ) => {
+          cookies.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options)
+          );
         },
       },
-    }
-  );
-  await sb.auth.getUser();
+    });
+    await sb.auth.getUser();
+  } catch (err) {
+    // Network blip, cookie corruption, key mismatch — none of these should
+    // bring down the whole site. Log for observability and serve the page.
+    console.error("[middleware] supabase getUser failed:", err);
+  }
+
   return res;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Run on app routes only. Skip Next.js internals, static assets, and the
+  // /api/* surface (which handles its own auth where it needs to).
+  matcher: [
+    "/((?!api|_next/static|_next/image|_next/data|favicon.ico|robots.txt|sitemap.xml).*)",
+  ],
 };

@@ -17,12 +17,18 @@ export default async function Stats() {
   const initial = user.email?.[0] ?? "·";
   const username = user.email?.split("@")[0] ?? "duman";
 
+  type GameRow = {
+    difficulty: string;
+    is_complete: boolean;
+    elapsed_seconds: number;
+    created_at: string;
+  };
   const { data: games } = await sb
     .from("games")
     .select("difficulty,is_complete,elapsed_seconds,created_at")
     .eq("user_id", user.id);
 
-  const all = games ?? [];
+  const all = (games ?? []) as GameRow[];
   const completed = all.filter((g) => g.is_complete);
   const byDiff = (d: string) => completed.filter((g) => g.difficulty === d);
   const avg = (xs: number[]) =>
