@@ -12,7 +12,8 @@ create table public.profiles (
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, username) values (new.id, split_part(new.email, '@', 1));
+  insert into public.profiles (id, username) values (new.id, split_part(new.email, '@', 1))
+  on conflict (id) do nothing;
   return new;
 end $$;
 
@@ -37,7 +38,7 @@ create table public.daily_puzzles (
   givens text not null,
   solution text not null,
   difficulty text not null,
-  min_seconds int not null
+  min_seconds int not null check (min_seconds > 0)
 );
 
 -- In-progress + finished games
@@ -58,6 +59,7 @@ create table public.games (
   updated_at timestamptz not null default now()
 );
 create index games_user_idx on public.games(user_id);
+create index games_user_complete_idx on public.games(user_id, is_complete);
 create index games_daily_idx on public.games(daily_date) where daily_date is not null;
 
 -- Daily leaderboard entries (one row per user per date)
@@ -74,7 +76,7 @@ create index daily_results_date_time_idx on public.daily_results(date, elapsed_s
 -- AI Coach usage (rate limit)
 create table public.ai_usage (
   user_id uuid not null references auth.users(id) on delete cascade,
-  day date not null default (current_date at time zone 'utc'),
+  day date not null default (timezone('utc', now()))::date,
   count int not null default 0,
   primary key (user_id, day)
 );
@@ -99,7 +101,9 @@ create policy daily_world_read on public.daily_puzzles for select using (true);
 create policy games_owner_all on public.games for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- Daily results: world-read for leaderboard
+-- Daily results: world-read for leaderboard.
+-- No INSERT policy: only the service role (server-side /api/daily/submit route) may write,
+-- after server-validating the solution and elapsed time against daily_puzzles.min_seconds.
 create policy daily_results_world_read on public.daily_results for select using (true);
 
 -- AI usage: users see/update own
