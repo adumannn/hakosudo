@@ -1,10 +1,9 @@
 // app/api/seal/freeze/route.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { computeAllotment } from "@/lib/seal/freeze";
 
 export const runtime = "nodejs";
-
-const MAX_FREEZES_PER_MONTH = 2;
 
 export async function POST(req: NextRequest) {
   const sb = createServerClient();
@@ -78,16 +77,3 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, remaining: allotment - used - 1 });
 }
 
-/** Pro-rated allotment for the user's first partial month, full afterward. */
-function computeAllotment(profileCreatedAt: string, grantedMonth: string): number {
-  const monthStart = new Date(grantedMonth + "T00:00:00Z");
-  const monthEnd = new Date(monthStart);
-  monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
-  const created = new Date(profileCreatedAt);
-  if (created < monthStart) return MAX_FREEZES_PER_MONTH;
-  if (created >= monthEnd) return 0;
-  // Pro-rated for the partial month: ceil((days_left / days_in_month) * 2), capped at 2.
-  const daysInMonth = (monthEnd.getTime() - monthStart.getTime()) / 86400000;
-  const daysLeft = Math.max(0, (monthEnd.getTime() - created.getTime()) / 86400000);
-  return Math.min(MAX_FREEZES_PER_MONTH, Math.ceil((daysLeft / daysInMonth) * MAX_FREEZES_PER_MONTH));
-}

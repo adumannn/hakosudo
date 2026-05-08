@@ -6,6 +6,7 @@ import { YearScroll } from "@/components/year-scroll/YearScroll";
 import { createServerClient } from "@/lib/supabase/server";
 import { todayUTC } from "@/lib/utils";
 import { computeUnifiedStreak } from "@/lib/seal/streak";
+import { computeAllotment } from "@/lib/seal/freeze";
 import { assembleYearSeries } from "@/lib/seal/year";
 import { dateLine } from "@/lib/kanji";
 import type { YearSeries } from "@/lib/seal/types";
@@ -116,7 +117,8 @@ export default async function Home() {
           .eq("user_id", user.id)
           .eq("granted_month", granted);
         const used = count ?? 0;
-        const remaining = Math.max(0, 2 - used);
+        const allotment = computeAllotment(profile.created_at, granted);
+        const remaining = Math.max(0, allotment - used);
         if (remaining > 0) freezePrompt = { date: yestStr, kanji: yestEntry.kanji, remaining };
       }
     }
