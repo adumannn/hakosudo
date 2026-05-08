@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 const difficulties = [
   { key: "easy", label: "Easy" },
@@ -8,7 +9,7 @@ const difficulties = [
   { key: "expert", label: "Expert" },
 ];
 
-export default function Home() {
+export default async function Home() {
   return (
     <main className="container py-8 max-w-3xl">
       <header className="flex items-center justify-between mb-8">
@@ -16,7 +17,7 @@ export default function Home() {
         <div className="flex gap-2 items-center">
           <Link href="/leaderboard" className="text-sm hover:underline">Leaderboard</Link>
           <Link href="/stats" className="text-sm hover:underline">Stats</Link>
-          <Link href="/auth/login" className="text-sm hover:underline">Sign in</Link>
+          <UserMenu />
           <ThemeToggle />
         </div>
       </header>
