@@ -2,13 +2,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { StreakBadge } from "@/components/StreakBadge";
 
 type NavKey = "today" | "casual" | "ledger" | "profile" | "pro";
 
 interface MastheadProps {
   active?: NavKey;
-  streakDays?: number;
   initial?: string;
   /** Replace nav with a thin in-game header (game title + timer + solved count) */
   variant?: "default" | "game";
@@ -29,7 +27,6 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
 
 export function Masthead({
   active,
-  streakDays = 21,
   initial = "·",
   variant = "default",
   gameTitle,
@@ -127,12 +124,6 @@ export function Masthead({
           </nav>
         </div>
         <div className="flex items-center gap-[16px] md:gap-[22px] text-[13px] text-moss">
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="eyebrow">streak</span>
-            <span className="font-semibold text-lg">
-              <StreakBadge days={streakDays} />
-            </span>
-          </div>
           <div className="avatar">{initial.toUpperCase()}</div>
         </div>
       </header>
@@ -181,12 +172,6 @@ export function Masthead({
               </Link>
             ))}
           </nav>
-          <div className="mt-auto px-8 pb-10 flex items-center gap-2 mono text-[10px] tracking-[0.22em] uppercase text-moss">
-            <span className="eyebrow">streak</span>
-            <span className="font-semibold text-base">
-              <StreakBadge days={streakDays} />
-            </span>
-          </div>
         </div>
       )}
     </>

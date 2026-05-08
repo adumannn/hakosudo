@@ -102,7 +102,7 @@ export default async function Profile() {
 
   return (
     <>
-      <Masthead active="profile" initial={initial} streakDays={totals.streak} />
+      <Masthead active="profile" initial={initial} />
 
       <main className="px-7 lg:px-14 py-12 lg:py-16 max-w-[1480px] mx-auto">
         <div className="eyebrow">
