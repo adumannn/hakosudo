@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const SENSEI_SYSTEM_PROMPT = `You are the Sensei in a Japanese-aesthetic daily sudoku app. Each calendar day has a featured kanji. Write ONE micro-line introducing today's kanji.
 
@@ -33,7 +34,14 @@ export async function generateSenseiLine(input: SenseiInput): Promise<string> {
   return block.text.trim().replace(/^["']|["']$/g, "");
 }
 
-/** Read or write the cached line for a given date. */
+/** Read or write the cached line for a given date.
+ *
+ * Read uses the regular server client (table is world-readable).
+ * Write uses the admin client because `daily_seal_lines` has no
+ * INSERT policy by design — see migration 0005. If service-role envs
+ * are missing the cache write is skipped silently and the live-
+ * generated line is still returned.
+ */
 export async function getOrCreateLine(
   date: string,
   kanji: { kanji: string; romaji: string; meaning: string },
@@ -46,14 +54,20 @@ export async function getOrCreateLine(
     .maybeSingle();
   if (cached?.line) return cached.line;
 
+  let line: string;
   try {
-    const line = await generateSenseiLine(kanji);
-    await sb
-      .from("daily_seal_lines")
-      .insert({ date, line });
-    return line;
+    line = await generateSenseiLine(kanji);
   } catch {
-    // If generation fails, return null and the UI will omit the line.
+    // Generation failed; UI will omit the line.
     return null;
   }
+
+  const admin = createAdminClient();
+  if (admin) {
+    // Best-effort cache write. A duplicate-key race (two simultaneous
+    // first-of-day requests) is acceptable: the loser's row insert hits
+    // 23505 inside Supabase and is reported as `error` rather than thrown.
+    await admin.from("daily_seal_lines").insert({ date, line });
+  }
+  return line;
 }
