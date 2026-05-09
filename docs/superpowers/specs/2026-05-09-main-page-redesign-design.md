@@ -22,7 +22,7 @@ Three horizontal bands inside the existing `max-w-[1480px]` container:
 
 ### Band 1 — Hero (2-col)
 
-```
+```text
 ┌────────────────────────────────────┬─────────────────────┐
 │                                    │  YOU TODAY          │
 │         TodayCard                  │  ─────────          │
@@ -52,7 +52,7 @@ Three horizontal bands inside the existing `max-w-[1480px]` container:
 
 ### Band 2 — Year (full-width)
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │  YOUR YEAR                                  247 / 365    │
 ├──────────────────────────────────────────────────────────┤
@@ -67,7 +67,7 @@ Three horizontal bands inside the existing `max-w-[1480px]` container:
 
 ### Band 3 — Bottom strip (2-col, same proportions as hero)
 
-```
+```text
 ┌─────────────────────────────────┬────────────────────────┐
 │  GLOBAL PACE · TODAY            │  LEDGER · TODAY    →   │
 │  ─────────                      │  ─────────             │
@@ -121,10 +121,10 @@ The hero's `border-l` rule between columns is `lg:`-only — no separator on mob
 ## Components
 
 ### New
-- **`YouTodayPanel`** — small server-renderable component (no interactivity) that takes `{ streak, yearFilled, yearTotal, todayElapsed?, todayRank?, todayTotalSolvers? }` and renders the 4-row stat list. Lives at `components/stats/YouTodayPanel.tsx` (the existing `components/stats/` folder is the right home — it sits next to `Heatmap.tsx`).
+- **`YouTodayPanel`** — small server-renderable component (no interactivity) that takes `{ streak, yearFilled, yearTotal, todayElapsed: number | null, todayRank: { rank: number, total: number } | null }` and renders the 4-row stat list. Lives at `components/stats/YouTodayPanel.tsx` (the existing `components/stats/` folder is the right home — it sits next to `Heatmap.tsx`).
 
 ### Modified
-- **`app/page.tsx`** — restructure the signed-in render block (lines 211–323). No new data fetches; `todayRank` comes from finding the current user's row inside the existing `snapshotRows` query, and `todayTotalSolvers` is `snapshotRows.length`.
+- **`app/page.tsx`** — restructure the signed-in render block (lines 211–323). No new data fetches; `todayRank` comes from `computeTodayRank` over the existing `snapshotRows` and is `{ rank, total } | null`.
 - **`components/year-scroll/TodayCard.tsx`** — remove the streak chip from the CTA row (the `{streakDays > 0 && ...}` span). The `streakDays` prop becomes optional/unused but keep the type for the component's other usages, if any.
 
 ### Unchanged

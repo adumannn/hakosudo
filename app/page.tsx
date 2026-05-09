@@ -138,7 +138,8 @@ export default async function Home() {
       .from("daily_results")
       .select("user_id,elapsed_seconds,city,created_at,profiles(username)")
       .eq("date", today)
-      .order("elapsed_seconds", { ascending: true }),
+      .order("elapsed_seconds", { ascending: true })
+      .order("created_at", { ascending: true }),
     sb
       .from("games")
       .select("*", { count: "exact", head: true })

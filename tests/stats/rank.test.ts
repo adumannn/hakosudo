@@ -40,4 +40,28 @@ describe("computeTodayRank", () => {
     ];
     expect(computeTodayRank({ rows, userId: "b" })).toEqual({ rank: 2, total: 3 });
   });
+
+  it("uses competition rank when elapsed_seconds ties", () => {
+    const rows = [
+      { user_id: "a", elapsed_seconds: 100 },
+      { user_id: "b", elapsed_seconds: 100 },
+      { user_id: "c", elapsed_seconds: 150 },
+    ];
+    expect(computeTodayRank({ rows, userId: "a" })).toEqual({ rank: 1, total: 3 });
+    expect(computeTodayRank({ rows, userId: "b" })).toEqual({ rank: 1, total: 3 });
+    expect(computeTodayRank({ rows, userId: "c" })).toEqual({ rank: 3, total: 3 });
+  });
+
+  it("rank is independent of input row order", () => {
+    const rowsForward = [
+      { user_id: "a", elapsed_seconds: 100 },
+      { user_id: "b", elapsed_seconds: 200 },
+    ];
+    const rowsReversed = [
+      { user_id: "b", elapsed_seconds: 200 },
+      { user_id: "a", elapsed_seconds: 100 },
+    ];
+    expect(computeTodayRank({ rows: rowsForward, userId: "a" })).toEqual({ rank: 1, total: 2 });
+    expect(computeTodayRank({ rows: rowsReversed, userId: "a" })).toEqual({ rank: 1, total: 2 });
+  });
 });

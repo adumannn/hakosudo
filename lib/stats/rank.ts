@@ -1,8 +1,6 @@
 /**
- * Today's leaderboard rank for a given user.
- *
- * Assumes `rows` is already sorted by `elapsed_seconds` ascending — which is
- * how `app/page.tsx` queries `daily_results` for the home page snapshot.
+ * Today's leaderboard rank for a given user — competition-rank semantics:
+ * ties share the same rank. Independent of the input row order.
  */
 export interface TodayRank {
   rank: number;
@@ -14,7 +12,8 @@ export function computeTodayRank(input: {
   userId: string;
 }): TodayRank | null {
   const { rows, userId } = input;
-  const idx = rows.findIndex((r) => r.user_id === userId);
-  if (idx === -1) return null;
-  return { rank: idx + 1, total: rows.length };
+  const me = rows.find((r) => r.user_id === userId);
+  if (!me) return null;
+  const fasterCount = rows.filter((r) => r.elapsed_seconds < me.elapsed_seconds).length;
+  return { rank: fasterCount + 1, total: rows.length };
 }
