@@ -117,7 +117,7 @@ export function WinModal() {
   const todayAlreadyFilled = !!series?.seals.find((s) => s.date === dailyDate && s.state === "filled");
   const filledCount = baseFilled + (dailyDate && !todayAlreadyFilled ? 1 : 0);
   const totalDays = series?.seals.length ?? 365;
-  const todayKanji = series?.seals.find((s) => s.date === dailyDate)?.kanji ?? skin.sealKanji;
+  const todayKanji = skin.sealKanji;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
