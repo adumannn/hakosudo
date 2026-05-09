@@ -53,43 +53,80 @@ export default async function Leaderboard({
   const seq = dailyMeta?.seq ?? null;
   const difficulty = dailyMeta?.difficulty ?? "—";
 
-  // Today's rows (used for sidebar counts AND, when range=today, the table itself).
-  let q = sb
-    .from("daily_results")
-    .select(
-      "user_id,elapsed_seconds,city,created_at,hints_used,profiles(username)"
-    )
-    .eq("date", date)
-    .order("elapsed_seconds", { ascending: true });
-  let allRows: Row[] = [];
+  // Sidebar counts always come from today (the sidebar is "who's in
+  // each city for today's box", not the range-of-time view).
+  let allRowsToday: Row[] = [];
   try {
-    const { data } = await q;
-    allRows = (data ?? []) as unknown as Row[];
+    const { data } = await sb
+      .from("daily_results")
+      .select(
+        "user_id,elapsed_seconds,city,created_at,hints_used,profiles(username)",
+      )
+      .eq("date", date)
+      .order("elapsed_seconds", { ascending: true });
+    allRowsToday = (data ?? []) as unknown as Row[];
   } catch {
-    allRows = [];
+    allRowsToday = [];
+  }
+
+  // Table rows depend on range.
+  let tableRowsAll: Row[] = [];
+  if (range === "today") {
+    tableRowsAll = allRowsToday;
+  } else {
+    const fromDate = (() => {
+      if (range === "all") return null;
+      const d = new Date(date + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() - 6);
+      return d.toISOString().slice(0, 10);
+    })();
+    let bestQ = sb
+      .from("daily_results")
+      .select(
+        "user_id,elapsed_seconds,city,created_at,hints_used,profiles(username)",
+      );
+    if (fromDate) bestQ = bestQ.gte("date", fromDate).lte("date", date);
+    bestQ = bestQ.order("elapsed_seconds", { ascending: true });
+    let allRows: Row[] = [];
+    try {
+      const { data } = await bestQ;
+      allRows = (data ?? []) as unknown as Row[];
+    } catch {
+      allRows = [];
+    }
+    // Take each user's single best time within the window. Rows are
+    // already sorted ascending so the first occurrence per user wins.
+    const seen = new Set<string>();
+    const dedup: Row[] = [];
+    for (const r of allRows) {
+      if (seen.has(r.user_id)) continue;
+      seen.add(r.user_id);
+      dedup.push(r);
+    }
+    tableRowsAll = dedup;
   }
 
   const cityCounts = computeCityCounts({
-    rows: allRows.map((r) => ({ city: r.city })),
+    rows: allRowsToday.map((r) => ({ city: r.city })),
     userCity: userProfileCity,
   });
-  const totalAllCities = allRows.length;
+  const totalAllCities = allRowsToday.length;
 
-  // Apply city filter to the table view if one is set.
-  const tableRowsAll = cityFilter
-    ? allRows.filter(
+  // Apply city filter and slice to top 20.
+  const tableRowsFiltered = cityFilter
+    ? tableRowsAll.filter(
         (r) => r.city && r.city.trim().toLowerCase() === cityFilter,
       )
-    : allRows;
-  const tableRows = tableRowsAll.slice(0, 20);
+    : tableRowsAll;
+  const tableRows = tableRowsFiltered.slice(0, 20);
 
   // User standing (only meaningful for today range).
   const userRow = user
-    ? allRows.find((r) => r.user_id === user.id) ?? null
+    ? allRowsToday.find((r) => r.user_id === user.id) ?? null
     : null;
   const userCity = userRow?.city ? userRow.city.trim().toLowerCase() : null;
   const userCityRows = userCity
-    ? allRows.filter((r) => r.city && r.city.trim().toLowerCase() === userCity)
+    ? allRowsToday.filter((r) => r.city && r.city.trim().toLowerCase() === userCity)
     : [];
   const standing = computeUserStanding({
     userRow: userRow
@@ -157,9 +194,14 @@ export default async function Leaderboard({
                 {seq != null
                   ? `daily № ${seq.toString().padStart(4, "0")} · ${date} · ${difficulty}`
                   : `${date} · ${difficulty}`}
+                {range !== "today" && ` · ${range === "7d" ? "7-day" : "all-time"} best`}
               </div>
               <h2 className="h-disp text-[42px] mt-1.5">
-                Today in {cityLabel}.
+                {range === "today"
+                  ? `Today in ${cityLabel}.`
+                  : range === "7d"
+                  ? `7 days in ${cityLabel}.`
+                  : `All-time in ${cityLabel}.`}
               </h2>
             </div>
             <div className="flex gap-1.5">
