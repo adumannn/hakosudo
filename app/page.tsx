@@ -14,6 +14,8 @@ import { dateLine, weekdayJp } from "@/lib/kanji";
 import { computeDailySnapshot, computeCityCounts } from "@/lib/stats/leaderboard";
 import { getCity } from "@/lib/geo";
 import type { YearSeries } from "@/lib/seal/types";
+import { computeTodayRank } from "@/lib/stats/rank";
+import { YouTodayPanel } from "@/components/stats/YouTodayPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -136,7 +138,8 @@ export default async function Home() {
       .from("daily_results")
       .select("user_id,elapsed_seconds,city,created_at,profiles(username)")
       .eq("date", today)
-      .order("elapsed_seconds", { ascending: true }),
+      .order("elapsed_seconds", { ascending: true })
+      .order("created_at", { ascending: true }),
     sb
       .from("games")
       .select("*", { count: "exact", head: true })
@@ -208,6 +211,14 @@ export default async function Home() {
     citySuggestion = getCity();
   }
 
+  const todayRank = computeTodayRank({
+    rows: rows.map((r) => ({ user_id: r.user_id, elapsed_seconds: r.elapsed_seconds })),
+    userId: user.id,
+  });
+  const yearFilled =
+    series?.seals.filter((s) => s.state === "filled" || s.state === "freeze").length ?? 0;
+  const yearTotal = series?.seals.length ?? 0;
+
   return (
     <>
       <Masthead active="today" initial={initial} email={user.email ?? null} />
@@ -226,7 +237,8 @@ export default async function Home() {
           </div>
         )}
 
-        <div className="mt-6 max-w-[640px]">
+        {/* ── Band 1 · Hero ───────────────────────────────────────── */}
+        <section className="mt-6 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] lg:gap-12 items-start">
           <TodayCard
             today={todaySeal}
             completedElapsed={completedTodayElapsed}
@@ -234,25 +246,36 @@ export default async function Home() {
             freezePrompt={freezePrompt}
             tategakiDay={weekdayJp()}
           />
-        </div>
+          <div className="mt-8 lg:mt-0">
+            <YouTodayPanel
+              streak={streak}
+              yearFilled={yearFilled}
+              yearTotal={yearTotal}
+              todayElapsed={completedTodayElapsed ?? null}
+              todayRank={todayRank}
+            />
+          </div>
+        </section>
 
+        {/* ── Band 2 · Year ───────────────────────────────────────── */}
         {series && (
-          <div className="mt-10 max-w-[640px]">
+          <section className="mt-12">
             <div className="flex justify-between items-baseline mb-3">
               <div className="eyebrow">your year</div>
               <div className="mono text-[11px] tracking-[0.14em] text-moss">
-                {series.seals.filter((s) => s.state === "filled" || s.state === "freeze").length}
+                {yearFilled}
                 {" / "}
-                {series.seals.length}
+                {yearTotal}
               </div>
             </div>
             <YearScroll series={series} />
-          </div>
+          </section>
         )}
 
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {/* ── Band 3 · Bottom strip ───────────────────────────────── */}
+        <section className="mt-12 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
           <div>
-            <p className="mt-2 mono text-[10px] tracking-[0.2em] uppercase text-moss">
+            <p className="mono text-[10px] tracking-[0.22em] uppercase text-moss">
               global pace · today
             </p>
             <div className="mt-2.5 flex flex-wrap gap-x-8 gap-y-4">
@@ -283,7 +306,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div>
+          <div className="mt-8 lg:mt-0">
             <div className="flex justify-between items-baseline mb-3.5">
               <div className="eyebrow">ledger · today</div>
               <Link href="/leaderboard" className="ital text-vermillion text-[14px] hover:underline">
@@ -291,9 +314,20 @@ export default async function Home() {
               </Link>
             </div>
             {preview.length === 0 ? (
-              <p className="ital text-moss text-[14px] py-4 border-t-2 border-sumi">
-                — the ledger fills as solvers finish today's box.
-              </p>
+              <div className="border-t-2 border-sumi">
+                {[1, 2, 3].map((n) => (
+                  <div
+                    key={n}
+                    className="grid grid-cols-[28px_1fr_auto] gap-3.5 py-2.5 border-b border-sumi/12"
+                  >
+                    <div className="kdate-jp text-[13px] text-moss/40">
+                      {n.toString().padStart(2, "0")}
+                    </div>
+                    <div className="text-[14px] text-moss/40">—</div>
+                    <div className="mincho text-[15px] font-semibold tnum text-moss/40">—</div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div>
                 {preview.map((row) => (
@@ -308,14 +342,10 @@ export default async function Home() {
                     <div className="mincho text-[15px] font-semibold tnum">{row.time}</div>
                   </div>
                 ))}
-                <div className="text-center py-3.5 ital text-moss text-[14px]">
-                  <span className="text-vermillion mr-1">↘</span>
-                  your name lands when you finish.
-                </div>
               </div>
             )}
           </div>
-        </div>
+        </section>
       </main>
 
       <Footer />

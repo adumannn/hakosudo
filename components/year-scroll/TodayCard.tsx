@@ -124,23 +124,17 @@ export function TodayCard({
                 share
               </Link>
             )}
-            {streakDays > 0 && (
-              <span className="mono text-[12px] tracking-[0.16em] uppercase text-vermillion flex items-center gap-2">
-                <span className="inline-seal" aria-hidden>印</span>
-                streak · {streakDays}d
-              </span>
-            )}
           </div>
           {freezePrompt && freezeStatus === "idle" && (
             <div className="mt-5 border-t border-sumi/15 pt-4 text-[14px] ital text-sumi max-w-[44ch]">
-              yesterday's seal — {freezePrompt.kanji} — was missed.{" "}
+              yesterday — {freezePrompt.kanji} — missed.{" "}
               <button
                 onClick={applyFreeze}
                 className="text-vermillion underline underline-offset-4 mono not-italic text-[11px] tracking-[0.14em] uppercase"
               >
                 apply freeze
               </button>{" "}
-              <span className="text-moss text-[11px]">({freezePrompt.remaining} of 2 left)</span>
+              <span className="text-moss text-[11px]">· {freezePrompt.remaining} left</span>
             </div>
           )}
           {freezeStatus === "pending" && (
