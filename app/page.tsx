@@ -4,6 +4,7 @@ import { Masthead } from "@/components/Masthead";
 import { TodayCard } from "@/components/year-scroll/TodayCard";
 import { YearScroll } from "@/components/year-scroll/YearScroll";
 import { CityPicker } from "@/components/profile/CityPicker";
+import { Landing } from "@/components/landing/Landing";
 import { createServerClient } from "@/lib/supabase/server";
 import { todayUTC, formatTime } from "@/lib/utils";
 import { computeUnifiedStreak } from "@/lib/seal/streak";
@@ -16,10 +17,18 @@ import type { YearSeries } from "@/lib/seal/types";
 
 export const dynamic = "force-dynamic";
 
-interface LedgerRow {
-  user_id: string;
-  elapsed_seconds: number;
-  profiles: { username: string | null } | null;
+const MONTHS_LOWER = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+];
+
+function landingDateLabels(d: Date = new Date()): { jp: string; en: string } {
+  const jp = weekdayJp(d);
+  const weekdaysEn = [
+    "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+  ];
+  const en = `${weekdaysEn[d.getDay()]} · ${d.getDate()} ${MONTHS_LOWER[d.getMonth()].slice(0, 3)}`;
+  return { jp, en };
 }
 
 export default async function Home() {
@@ -161,10 +170,37 @@ export default async function Home() {
     first: i === 0,
   }));
 
-  // Popular city list for the home banner picker.
+  // ─── Signed-out: marketing landing ───
+  if (!user) {
+    const labels = landingDateLabels();
+    const cityCounts = computeCityCounts({
+      rows: rows.map((r) => ({ city: r.city })),
+      userCity: null,
+    });
+    const topCity = cityCounts[0] ?? null;
+    return (
+      <>
+        <Masthead active="today" initial="·" />
+        <Landing
+          dateLabelJp={labels.jp}
+          dateLabelEn={labels.en}
+          dailySeq={snapshot.seq}
+          solvingNow={snapshot.solvingNow}
+          firstSolveTime={
+            snapshot.firstSolve
+              ? formatTime(snapshot.firstSolve.elapsedSeconds)
+              : null
+          }
+          cityCount={topCity}
+        />
+      </>
+    );
+  }
+
+  // Popular city list for the home banner picker (signed-in only).
   let popularCities: { city: string; count: number }[] = [];
   let citySuggestion: string | null = null;
-  if (user && profileCity === null) {
+  if (profileCity === null) {
     popularCities = computeCityCounts({
       rows: rows.map((r) => ({ city: r.city })),
       userCity: null,
@@ -179,7 +215,7 @@ export default async function Home() {
       <main className="px-6 lg:px-24 py-10 lg:py-16 max-w-[1480px] mx-auto">
         <div className="eyebrow red">{dateLine()}</div>
 
-        {user && profileCity === null && (
+        {profileCity === null && (
           <div className="mt-6 max-w-[640px]">
             <CityPicker
               variant="banner"

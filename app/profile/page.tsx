@@ -1,17 +1,12 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { formatTime, todayUTC } from "@/lib/utils";
-import { kanjiNum } from "@/lib/kanji";
 import { Masthead } from "@/components/Masthead";
 import { Heatmap } from "@/components/stats/Heatmap";
-import { AchievementsLedger } from "@/components/profile/AchievementsLedger";
-import { AchievementStamp } from "@/components/profile/AchievementStamp";
-import { CityPicker } from "@/components/profile/CityPicker";
-import { computeStatuses, type GameRow } from "@/lib/achievements";
+import { computeStatuses, ACHIEVEMENTS, type GameRow } from "@/lib/achievements";
 import { computeUnifiedStreak } from "@/lib/seal/streak";
 import { computeUserHeatmap } from "@/lib/stats/heatmap";
-import { computeCityCounts } from "@/lib/stats/leaderboard";
-import { getCity } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +15,35 @@ const MONTHS = [
   "july", "august", "september", "october", "november", "december",
 ];
 
+const STAMP_NOISE =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
+
 function formatSince(iso: string): string {
   const d = new Date(iso);
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)}`;
+}
+
+function streakStartDate(
+  today: string,
+  completed: Set<string>,
+  frozen: Set<string>,
+): string | null {
+  const present = (d: string) => completed.has(d) || frozen.has(d);
+  let cursor = today;
+  if (!present(cursor)) {
+    const d = new Date(cursor + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - 1);
+    cursor = d.toISOString().slice(0, 10);
+  }
+  if (!present(cursor)) return null;
+  let last = cursor;
+  while (present(cursor)) {
+    last = cursor;
+    const d = new Date(cursor + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - 1);
+    cursor = d.toISOString().slice(0, 10);
+  }
+  return last;
 }
 
 export default async function Profile() {
@@ -55,8 +76,6 @@ export default async function Profile() {
     { data: streakFreezes },
     { data: heatmapResults },
     { data: heatmapMedians },
-    { data: latestDaily },
-    { data: cityRows },
   ] = await Promise.all([
     sb.from("profiles").select("created_at,city").eq("id", user.id).maybeSingle(),
     sb
@@ -90,25 +109,13 @@ export default async function Profile() {
       .select("date,elapsed_seconds")
       .gte("date", windowStart)
       .lte("date", today),
-    sb
-      .from("daily_results")
-      .select("date,elapsed_seconds,daily_puzzles(seq,difficulty)")
-      .eq("user_id", user.id)
-      .order("date", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    sb.from("daily_results").select("city").eq("date", today),
   ]);
 
-  // Rename for clarity — this is everyone's results across the heatmap window,
-  // used to compute per-day medians.
   const globalDaily = heatmapMedians as { date: string; elapsed_seconds: number }[] | null;
 
   const all = (games ?? []) as GameRow[];
   const completed = all.filter((g) => g.is_complete);
   const byDiff = (d: string) => completed.filter((g) => g.difficulty === d);
-  const avg = (xs: number[]) =>
-    xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
   const best = (xs: number[]) => (xs.length ? Math.min(...xs) : 0);
 
   const completedDates = new Set<string>(
@@ -119,7 +126,6 @@ export default async function Profile() {
   );
   const streak = computeUnifiedStreak(today, completedDates, frozenDates);
 
-  // Heatmap data — compute medians per date in TS from the global slice.
   const grouped = new Map<string, number[]>();
   for (const row of globalDaily ?? []) {
     const arr = grouped.get(row.date) ?? [];
@@ -144,208 +150,345 @@ export default async function Profile() {
     mediansByDate,
   });
 
-  const totals = {
-    streak,
-    solvedAll: completed.length,
-    daily: completed.filter((g) => g.difficulty !== "casual").length,
-    expert: byDiff("expert").length,
-    avgSecs: avg(completed.map((g) => g.elapsed_seconds)),
-  };
+  const daysOnHako = profile?.created_at
+    ? Math.max(
+        0,
+        Math.floor(
+          (new Date(today + "T00:00:00Z").getTime() -
+            new Date(profile.created_at).getTime()) /
+            86_400_000,
+        ),
+      )
+    : 0;
 
-  const since = profile?.created_at ? formatSince(profile.created_at) : "—";
+  const streakStart = streakStartDate(today, completedDates, frozenDates);
+  const streakSinceLabel = streakStart ? formatSince(streakStart) : null;
+  const dailiesKept = completedDates.size;
+  const missed = Math.max(0, daysOnHako - dailiesKept - frozenDates.size);
 
-  const diffs: { key: string; label: string; accent?: boolean }[] = [
-    { key: "easy", label: "易 Easy" },
-    { key: "medium", label: "中 Medium" },
-    { key: "hard", label: "難 Hard" },
-    { key: "expert", label: "極 Expert", accent: true },
+  const lastOpenedTime = (() => {
+    const newest = (games ?? [])[0];
+    if (!newest) return null;
+    const d = new Date(newest.created_at);
+    const iso = d.toISOString().slice(0, 10);
+    if (iso !== today) return null;
+    const hh = d.getUTCHours().toString().padStart(2, "0");
+    const mm = d.getUTCMinutes().toString().padStart(2, "0");
+    return `${hh}:${mm}`;
+  })();
+
+  const diffs: { key: string; k: string; lvl: string }[] = [
+    { key: "easy", k: "易", lvl: "easy" },
+    { key: "medium", k: "中", lvl: "medium" },
+    { key: "hard", k: "難", lvl: "hard" },
+    { key: "expert", k: "極", lvl: "expert" },
   ];
 
   const diffStats = (d: string) => {
     const xs = byDiff(d).map((g) => g.elapsed_seconds);
-    return { best: best(xs), avg: avg(xs), count: xs.length };
+    const bestSec = best(xs);
+    const bestGame = bestSec > 0
+      ? byDiff(d).find((g) => g.elapsed_seconds === bestSec)
+      : undefined;
+    return { best: bestSec, count: xs.length, bestGame };
   };
 
-  const statuses = computeStatuses(all);
+  const statuses = computeStatuses(all, { today, frozen: frozenDates });
   const earnedCount = statuses.filter((s) => s.earned).length;
 
-  const recentDaily = latestDaily as
-    | { date: string; elapsed_seconds: number; daily_puzzles: { seq: number; difficulty: string } | null }
-    | null;
-  const recentLabel = recentDaily?.daily_puzzles
-    ? `${recentDaily.daily_puzzles.seq.toString().padStart(4, "0")} · ${recentDaily.date} · ${recentDaily.daily_puzzles.difficulty}`
-    : null;
+  const lastEarned = statuses
+    .filter((s) => s.earned && s.earnedAt)
+    .map((s) => {
+      const a = ACHIEVEMENTS.find((x) => x.key === s.key)!;
+      return { glyph: a.glyph, when: s.earnedAt! };
+    })[0];
 
-  // Popular cities for the picker.
-  const popular = computeCityCounts({
-    rows: ((cityRows ?? []) as { city: string | null }[]),
-    userCity: null,
-  });
+  const rareCount = statuses.filter((s) => {
+    const a = ACHIEVEMENTS.find((x) => x.key === s.key);
+    return s.earned && a?.category === "special";
+  }).length;
+
+  const displayName = (username.charAt(0).toUpperCase() + username.slice(1)).slice(0, 24);
+  const cityLabel = (profile?.city ?? "—").trim() || "—";
 
   return (
     <>
       <Masthead active="profile" initial={initial} />
 
-      <main className="px-7 lg:px-14 py-12 lg:py-16 max-w-[1480px] mx-auto">
-        <div className="eyebrow">
-          {username} · since {since}
-        </div>
-        <h1 className="h-disp text-[clamp(36px,7vw,54px)] mt-2">
-          A solver&rsquo;s ledger.
-        </h1>
-
-        <div className="mt-6">
-          <CityPicker
-            current={profile?.city ?? null}
-            suggestion={getCity()}
-            popular={popular}
-          />
-        </div>
-
-        {/* Top stats row */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 border-t-2 border-b-2 border-sumi py-6">
-          <div className="md:border-r border-sumi/20 md:pr-6">
-            <div className="eyebrow">streak · today</div>
-            <div className="kdate-jp text-[60px] md:text-[72px] text-vermillion font-semibold leading-none mt-2">
-              {kanjiNum(totals.streak)}
-            </div>
-            <div className="txt-small mt-2">{totals.streak} days</div>
-          </div>
-          <div className="md:border-r border-sumi/20 md:px-6 mt-6 md:mt-0">
-            <div className="eyebrow">solved · all</div>
-            <div className="kdate-jp text-[60px] md:text-[72px] font-bold leading-none mt-2 tnum">
-              {totals.solvedAll}
-            </div>
-            <div className="txt-small mt-2">
-              {totals.daily} daily · {totals.expert} expert
-            </div>
-          </div>
-          <div className="md:pl-6 mt-6 md:mt-0">
-            <div className="eyebrow">average pace</div>
-            <div className="kdate-jp text-[60px] md:text-[72px] font-semibold leading-none mt-2 tnum">
-              {formatTime(Math.round(totals.avgSecs))}
-            </div>
-            <div className="txt-small mt-2">
-              {totals.solvedAll === 0 ? "no solves yet" : "across all completed games"}
-            </div>
-          </div>
-        </div>
-
-        {/* Heatmap */}
-        <div className="mt-12">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-2 mb-3.5">
+      <main>
+        <section className="grid grid-cols-1 lg:grid-cols-[360px_1fr] border-b-[1.5px] border-sumi bg-bone">
+          {/* Left rail */}
+          <div className="bg-rice border-b lg:border-b-0 lg:border-r-[1.5px] border-sumi p-10 lg:px-12 lg:py-14 flex flex-col gap-9">
             <div>
-              <div className="eyebrow">last 26 weeks · 完 stamps</div>
-              <h3 className="h-disp text-[24px] mt-1.5">
-                Half a year, mostly kept.
-              </h3>
+              <div className="mono text-[10.5px] tracking-[0.22em] uppercase text-moss mb-3.5">
+                /u/{username} · {cityLabel}
+              </div>
+              <div
+                className="relative w-20 h-20 bg-vermillion text-bone flex items-center justify-center mincho font-bold leading-none mb-[18px]"
+                style={{ fontSize: 48 }}
+              >
+                <span className="relative z-10">{initial.toUpperCase()}</span>
+                <span
+                  aria-hidden
+                  className="absolute inset-0 mix-blend-multiply pointer-events-none"
+                  style={{ backgroundImage: STAMP_NOISE }}
+                />
+              </div>
+              <h1 className="mincho font-medium text-[42px] leading-none -tracking-[0.015em] text-sumi m-0">
+                {displayName}
+              </h1>
+              <div className="mono text-[10.5px] tracking-[0.2em] uppercase text-moss mt-2.5">
+                @{username}
+                {daysOnHako > 0 && <> · {daysOnHako}日 on Hako</>}
+              </div>
+              <p className="mt-[18px] ital text-[17px] text-moss leading-snug max-w-[30ch]">
+                — solver on Hako.
+              </p>
             </div>
-          </div>
-          <div className="overflow-x-auto -mx-7 px-7 lg:mx-0 lg:px-0">
-            <Heatmap days={heatmap} />
-          </div>
-          <div className="mt-3.5 flex justify-end items-center mono text-[10px] tracking-[0.18em] uppercase text-moss">
-            <div className="flex gap-1.5 items-center">
-              <span className="text-[10px]">less</span>
-              <span className="w-3 h-3 border-[0.5px] border-sumi/20" />
-              <span className="w-3 h-3 bg-vermillion/20" />
-              <span className="w-3 h-3 bg-vermillion/55" />
-              <span className="w-3 h-3 bg-vermillion" />
-              <span className="text-[10px]">more</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Best times grid */}
-        <div className="mt-12">
-          <div className="eyebrow mb-3.5">best times by box</div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {diffs.map((d) => {
-              const stat = diffStats(d.key);
-              return (
-                <div
-                  key={d.key}
-                  className={
-                    "border-[1.5px] border-sumi p-6 " +
-                    (d.accent ? "bg-vermillion text-bone" : "")
-                  }
+            <div className="pt-7 border-t border-sumi/18">
+              <div className="mono text-[10.5px] tracking-[0.22em] uppercase text-vermillion mb-2">
+                streak — kept
+              </div>
+              <div
+                className="mincho font-semibold text-vermillion -tracking-[0.03em] tnum"
+                style={{ fontSize: 128, lineHeight: 0.88 }}
+              >
+                {streak}
+                <span
+                  className="text-sumi font-medium"
+                  style={{ fontSize: "0.28em", marginLeft: "0.06em", verticalAlign: "0.7em" }}
                 >
-                  <div className="kdate-jp text-2xl">{d.label}</div>
-                  <div
-                    className={
-                      "mincho font-semibold mt-2 leading-none text-[36px] lg:text-[42px] tnum"
-                    }
-                  >
-                    {stat.count > 0 ? formatTime(stat.best) : "—"}
-                  </div>
-                  <div
-                    className={
-                      "text-[12.5px] mt-1.5 " +
-                      (d.accent ? "text-bone/70 font-jakarta" : "txt-small")
-                    }
-                  >
-                    {stat.count > 0
-                      ? `avg ${formatTime(Math.round(stat.avg))} · ${stat.count} solved`
-                      : "no solves yet"}
-                    {d.accent && stat.count > 0 ? " · pro" : ""}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <section className="mt-24">
-          <div className="grid grid-cols-[auto_1fr_auto] gap-8 items-end border-b-[1.5px] border-sumi pb-[18px]">
-            <div>
-              <div className="mono text-[11px] tracking-[0.22em] uppercase text-moss">
-                § achievements
-              </div>
-              <h2 className="mincho font-medium text-[36px] leading-none -tracking-[0.01em] mt-2">
-                Achievements
-                <span className="text-vermillion ml-3.5 text-[0.7em] align-baseline">
-                  章
+                  日
                 </span>
-              </h2>
+              </div>
+              <span className="block ital text-[15px] text-moss mt-2 leading-snug">
+                {streakSinceLabel && (
+                  <>
+                    since{" "}
+                    <strong className="mincho not-italic font-semibold text-sumi">
+                      {streakSinceLabel}
+                    </strong>
+                    .
+                    {dailiesKept > 0 && " "}
+                  </>
+                )}
+                {dailiesKept > 0 && (
+                  <>
+                    <strong className="mincho not-italic font-semibold text-sumi">
+                      {dailiesKept}
+                    </strong>{" "}
+                    of{" "}
+                    <strong className="mincho not-italic font-semibold text-sumi">
+                      {Math.max(daysOnHako, dailiesKept)}
+                    </strong>{" "}
+                    dailies kept.
+                  </>
+                )}
+                {!streakSinceLabel && dailiesKept === 0 && "— begin a streak today."}
+              </span>
             </div>
-            <div className="ital text-moss text-[17px] leading-snug max-w-[54ch] justify-self-start self-end">
-              — twelve marks a serious solver might collect. Earned and locked
-              sit next to each other; two specials stay hidden until you find
-              them.
-            </div>
-            <div className="mono text-[10.5px] tracking-[0.18em] uppercase text-moss">
-              {earnedCount} of 12 · earned
+
+            <div className="mt-auto pt-6 border-t border-sumi/18">
+              <Link
+                href="/play/daily"
+                className="btn-hako"
+                style={{ display: "flex", justifyContent: "space-between", width: "100%" }}
+              >
+                Continue today&rsquo;s box{" "}
+                <span className="font-jakarta font-light text-[18px]">→</span>
+              </Link>
+              {lastOpenedTime && (
+                <div className="mono text-[10px] tracking-[0.18em] uppercase text-moss mt-3">
+                  last opened today · {lastOpenedTime}
+                </div>
+              )}
             </div>
           </div>
 
-          {recentLabel ? (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center py-6 border-t border-sumi/14 border-b border-sumi/14">
-              <div>
-                <div className="ital text-[15px] text-moss mb-1">
-                  Daily № {recentLabel}
-                </div>
-                <div className="mincho text-[18px] font-medium text-sumi leading-snug">
-                  Solved in{" "}
-                  <span className="text-vermillion font-semibold">
-                    {formatTime(recentDaily!.elapsed_seconds)}
+          {/* Right column */}
+          <div className="p-8 lg:p-12 flex flex-col gap-12">
+            {/* Heatmap block */}
+            <div>
+              <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-2 mb-[18px]">
+                <h2 className="mincho font-medium text-[26px] leading-none -tracking-[0.005em] text-sumi m-0">
+                  Half a year, in seals
+                  <span className="text-vermillion ml-2.5 text-[0.85em]">
+                    章
                   </span>
+                </h2>
+                <div className="mono text-[10px] tracking-[0.18em] uppercase text-moss text-right leading-relaxed">
+                  <strong className="text-sumi font-medium">{dailiesKept}</strong>{" "}
+                  kept ·{" "}
+                  <strong className="text-sumi font-medium">{missed}</strong>{" "}
+                  missed
+                  <br />
+                  last 26 weeks
                 </div>
               </div>
-              <div className="flex gap-3.5">
-                <AchievementStamp glyph="完" size="small" title="completion" />
+              <div className="overflow-x-auto -mx-7 px-7 lg:mx-0 lg:px-0">
+                <Heatmap days={heatmap} />
+              </div>
+              <div className="mt-3.5 flex justify-between items-center mono text-[9.5px] tracking-[0.18em] uppercase text-moss">
+                <div>density = time on the puzzle</div>
+                <div className="flex gap-1.5 items-center">
+                  <span>less</span>
+                  <span className="w-[11px] h-[11px] border-[0.5px] border-sumi/20" />
+                  <span className="w-[11px] h-[11px] bg-vermillion/22" />
+                  <span className="w-[11px] h-[11px] bg-vermillion/55" />
+                  <span className="w-[11px] h-[11px] bg-vermillion" />
+                  <span>more</span>
+                </div>
               </div>
             </div>
-          ) : (
-            <p className="ital text-moss text-[15px] mt-8">
-              — finish a daily to begin your ledger.
-            </p>
-          )}
 
-          <div className="mt-9">
-            <AchievementsLedger statuses={statuses} />
+            {/* Personal best block */}
+            <div>
+              <div className="flex justify-between items-baseline mb-[18px] gap-6">
+                <h3 className="mincho font-medium text-[26px] leading-none -tracking-[0.005em] text-sumi m-0">
+                  Personal best
+                  <span className="text-vermillion ml-2.5 text-[0.85em]">速</span>
+                </h3>
+                <div className="mono text-[10px] tracking-[0.18em] uppercase text-moss text-right">
+                  your fastest, by floor
+                </div>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 border-t border-sumi/18">
+                {diffs.map((d, i, arr) => {
+                  const stat = diffStats(d.key);
+                  const has = stat.count > 0;
+                  return (
+                    <div
+                      key={d.key}
+                      className={
+                        "py-5 px-5 border-b border-sumi/12 " +
+                        (i === 0 ? "pl-0 " : "") +
+                        (i < arr.length - 1 ? "border-r border-sumi/10 " : "")
+                      }
+                    >
+                      <div className="flex justify-between items-baseline">
+                        <div
+                          className={
+                            "mincho font-semibold text-[32px] leading-none -tracking-[0.02em] " +
+                            (has ? "text-sumi" : "text-moss/45")
+                          }
+                        >
+                          {d.k}
+                        </div>
+                        <div className="mono text-[9.5px] tracking-[0.2em] uppercase text-moss">
+                          {d.lvl}
+                        </div>
+                      </div>
+                      <div
+                        className={
+                          "mincho font-semibold text-[32px] leading-none -tracking-[0.01em] tnum mt-5 " +
+                          (has ? "text-vermillion" : "text-moss/50")
+                        }
+                      >
+                        {has ? formatTime(stat.best) : "—:—"}
+                      </div>
+                      <div className="mono text-[9.5px] tracking-[0.16em] uppercase text-moss mt-1.5">
+                        {has && stat.bestGame
+                          ? `${formatSince(stat.bestGame.created_at)} · ${stat.count} solved`
+                          : "no solves yet"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Marks block */}
+            <div>
+              <div className="flex justify-between items-baseline mb-[18px] gap-6">
+                <h3 className="mincho font-medium text-[26px] leading-none -tracking-[0.005em] text-sumi m-0">
+                  {earnedCount === 0
+                    ? "No marks yet"
+                    : `${numberWord(earnedCount)} of twelve`}
+                  <span className="text-vermillion ml-2.5 text-[0.85em]">章</span>
+                </h3>
+                <div className="mono text-[10px] tracking-[0.18em] uppercase text-moss text-right">
+                  {lastEarned ? (
+                    <>
+                      last earned{" "}
+                      <strong className="text-sumi font-medium">
+                        {lastEarned.glyph}
+                      </strong>{" "}
+                      · {lastEarned.when}
+                    </>
+                  ) : (
+                    <>{earnedCount} of 12 · earned</>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-8 gap-y-6">
+                {ACHIEVEMENTS.map((a) => {
+                  const s = statuses.find((x) => x.key === a.key);
+                  const earned = !!s?.earned;
+                  const hidden = !earned && a.hideUntilEarned;
+                  return (
+                    <div
+                      key={a.key}
+                      className="flex flex-col items-center gap-2.5"
+                    >
+                      {earned ? (
+                        <div
+                          className="relative w-[54px] h-[54px] bg-vermillion text-bone flex items-center justify-center mincho font-bold leading-none"
+                          style={{ fontSize: 26 }}
+                        >
+                          <span className="relative z-10">{a.glyph}</span>
+                          <span
+                            aria-hidden
+                            className="absolute inset-0 mix-blend-multiply pointer-events-none"
+                            style={{ backgroundImage: STAMP_NOISE }}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="w-[54px] h-[54px] bg-transparent text-sumi flex items-center justify-center mincho font-semibold leading-none border-[1.5px] border-sumi/18"
+                          style={{ fontSize: 26 }}
+                        >
+                          <span className="opacity-[0.22]">
+                            {hidden ? "？" : a.glyph}
+                          </span>
+                        </div>
+                      )}
+                      <div
+                        className={
+                          "mincho font-semibold text-[11px] text-center leading-tight " +
+                          (earned ? "text-sumi" : "text-moss")
+                        }
+                      >
+                        {hidden ? "— hidden" : a.name}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="border-t border-sumi/18 pt-3.5 mt-[18px] flex justify-between items-center mono text-[10px] tracking-[0.22em] uppercase text-moss">
+                <span>
+                  {earnedCount} of 12
+                  {rareCount > 0 && <> · {rareCount} rare</>}
+                </span>
+                <Link
+                  href="/achievements"
+                  className="text-sumi border-b-[1.5px] border-vermillion pb-0.5"
+                >
+                  See the full ledger →
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
       </main>
     </>
   );
+}
+
+function numberWord(n: number): string {
+  const words = [
+    "Zero", "One", "Two", "Three", "Four", "Five", "Six",
+    "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
+  ];
+  return words[n] ?? n.toString();
 }

@@ -507,6 +507,11 @@
   50%      { box-shadow: 0 0 0 4px hsl(var(--vermillion) / 0.16); transform: scale(1.04); }
 }
 
+@keyframes hako-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
 /* Vermillion brushstroke under today's heatmap cell — tapered ends, slight tilt */
 .brush-today {
   position: relative;
