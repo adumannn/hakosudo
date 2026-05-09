@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { GameShell } from "@/components/game/GameShell";
 import { Difficulty } from "@/lib/sudoku/types";
+import { resolveActiveSkinServer } from "@/lib/skins/server";
+import { SkinProvider } from "@/components/theme/SkinContext";
 
 const VALID = ["easy", "medium", "hard", "expert"] as const;
 
@@ -16,5 +18,15 @@ export default async function Page({ params }: { params: { difficulty: string } 
     .limit(50);
   if (!data?.length) notFound();
   const pick = data[Math.floor(Math.random() * data.length)];
-  return <GameShell difficulty={params.difficulty as Difficulty} puzzle={pick} />;
+
+  // Casual surface: user override (Pro-only) or current-date season fallback.
+  const skin = await resolveActiveSkinServer({ surface: "casual" });
+
+  return (
+    <div data-skin={skin.paletteKey}>
+      <SkinProvider skin={skin}>
+        <GameShell difficulty={params.difficulty as Difficulty} puzzle={pick} />
+      </SkinProvider>
+    </div>
+  );
 }
