@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
 
-type NavKey = "today" | "casual" | "ledger" | "profile" | "pro";
+type NavKey = "today" | "casual" | "play" | "ledger" | "profile" | "pro";
 
 interface MastheadProps {
   active?: NavKey;
