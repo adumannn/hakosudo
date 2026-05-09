@@ -50,7 +50,7 @@ export default async function Achievements() {
 
   return (
     <>
-      <Masthead active="profile" initial={initial} />
+      <Masthead active="profile" initial={initial} email={user.email ?? null} />
       <main className="px-7 lg:px-14 py-12 lg:py-16 max-w-[1480px] mx-auto">
         <Link
           href="/profile"

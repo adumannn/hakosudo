@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { formatTime, todayUTC } from "@/lib/utils";
 import { Masthead } from "@/components/Masthead";
 import { Heatmap } from "@/components/stats/Heatmap";
+import { UsernamePicker } from "@/components/profile/UsernamePicker";
 import { computeStatuses, ACHIEVEMENTS, type GameRow } from "@/lib/achievements";
 import { computeUnifiedStreak } from "@/lib/seal/streak";
 import { computeUserHeatmap } from "@/lib/stats/heatmap";
@@ -55,7 +56,7 @@ export default async function Profile() {
   const user = session.user;
 
   const initial = user.email?.[0] ?? "·";
-  const username = user.email?.split("@")[0] ?? "duman";
+  const emailHandle = user.email?.split("@")[0] ?? "duman";
 
   const today = todayUTC();
   const windowStart = (() => {
@@ -77,7 +78,7 @@ export default async function Profile() {
     { data: heatmapResults },
     { data: heatmapMedians },
   ] = await Promise.all([
-    sb.from("profiles").select("created_at,city").eq("id", user.id).maybeSingle(),
+    sb.from("profiles").select("created_at,city,username").eq("id", user.id).maybeSingle(),
     sb
       .from("games")
       .select(
@@ -208,19 +209,22 @@ export default async function Profile() {
     return s.earned && a?.category === "special";
   }).length;
 
-  const displayName = (username.charAt(0).toUpperCase() + username.slice(1)).slice(0, 24);
+  const username = profile?.username?.trim() || emailHandle;
+  const displayName = username.charAt(0).toUpperCase() + username.slice(1);
+  // Long handles get a smaller font so the h1 doesn't overflow the 360px rail.
+  const headlineSize = displayName.length > 14 ? 28 : displayName.length > 10 ? 34 : 42;
   const cityLabel = (profile?.city ?? "—").trim() || "—";
 
   return (
     <>
-      <Masthead active="profile" initial={initial} />
+      <Masthead active="profile" initial={initial} email={user.email ?? null} />
 
       <main>
         <section className="grid grid-cols-1 lg:grid-cols-[360px_1fr] border-b-[1.5px] border-sumi bg-bone">
           {/* Left rail */}
           <div className="bg-rice border-b lg:border-b-0 lg:border-r-[1.5px] border-sumi p-10 lg:px-12 lg:py-14 flex flex-col gap-9">
             <div>
-              <div className="mono text-[10.5px] tracking-[0.22em] uppercase text-moss mb-3.5">
+              <div className="mono text-[10.5px] tracking-[0.22em] uppercase text-moss mb-3.5 truncate" title={`/u/${username} · ${cityLabel}`}>
                 /u/{username} · {cityLabel}
               </div>
               <div
@@ -234,12 +238,19 @@ export default async function Profile() {
                   style={{ backgroundImage: STAMP_NOISE }}
                 />
               </div>
-              <h1 className="mincho font-medium text-[42px] leading-none -tracking-[0.015em] text-sumi m-0">
+              <h1
+                className="mincho font-medium leading-none -tracking-[0.015em] text-sumi m-0 break-words"
+                style={{ fontSize: headlineSize }}
+                title={displayName}
+              >
                 {displayName}
               </h1>
-              <div className="mono text-[10.5px] tracking-[0.2em] uppercase text-moss mt-2.5">
-                @{username}
-                {daysOnHako > 0 && <> · {daysOnHako}日 on Hako</>}
+              <div className="mono text-[10.5px] tracking-[0.2em] uppercase text-moss mt-2.5 flex items-center gap-2 flex-wrap">
+                <span className="truncate max-w-[200px]" title={`@${username}`}>
+                  @{username}
+                </span>
+                {daysOnHako > 0 && <span>· {daysOnHako}日 on Hako</span>}
+                <UsernamePicker current={username} />
               </div>
               <p className="mt-[18px] ital text-[17px] text-moss leading-snug max-w-[30ch]">
                 — solver on Hako.

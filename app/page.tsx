@@ -210,7 +210,7 @@ export default async function Home() {
 
   return (
     <>
-      <Masthead active="today" initial={initial} />
+      <Masthead active="today" initial={initial} email={user.email ?? null} />
 
       <main className="px-6 lg:px-24 py-10 lg:py-16 max-w-[1480px] mx-auto">
         <div className="eyebrow red">{dateLine()}</div>

@@ -71,7 +71,7 @@ export default async function YearPage() {
 
   return (
     <>
-      <Masthead active="today" initial={initial} />
+      <Masthead active="today" initial={initial} email={user?.email ?? null} />
 
       <main className="px-6 lg:px-16 py-10 lg:py-14 max-w-[1480px] mx-auto">
         <div className="flex items-baseline justify-between">

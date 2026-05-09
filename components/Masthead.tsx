@@ -2,12 +2,23 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/client";
 
 type NavKey = "today" | "casual" | "ledger" | "profile" | "pro";
 
 interface MastheadProps {
   active?: NavKey;
   initial?: string;
+  /** Email of the signed-in user. When present, the avatar becomes an account dropdown. */
+  email?: string | null;
   /** Replace nav with a thin in-game header (game title + timer + solved count) */
   variant?: "default" | "game";
   gameTitle?: string;
@@ -15,6 +26,63 @@ interface MastheadProps {
   solvedCount?: { filled: number; total: number };
   /** Game variant: callback for the mobile sensei trigger. */
   onSensei?: () => void;
+}
+
+function AvatarDropdown({
+  initial,
+  email,
+}: {
+  initial: string;
+  email: string;
+}) {
+  const onSignOut = async () => {
+    const sb = createClient();
+    await sb.auth.signOut();
+    window.location.href = "/";
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label="account menu"
+        className="avatar focus:outline-none focus-visible:ring-2 focus-visible:ring-vermillion"
+      >
+        {initial.toUpperCase()}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className="bg-bone border-[1.5px] border-sumi rounded-none p-0 min-w-[200px] shadow-[0_20px_40px_-20px_rgba(0,0,0,0.4)]"
+      >
+        <DropdownMenuLabel className="mono text-[10px] tracking-[0.18em] uppercase text-moss px-3 py-2.5 truncate">
+          {email}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-sumi/15 m-0" />
+        <DropdownMenuItem asChild className="rounded-none focus:bg-rice cursor-pointer">
+          <Link
+            href="/profile"
+            className="mincho text-[14px] text-sumi px-3 py-2.5 block"
+          >
+            Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="rounded-none focus:bg-rice cursor-pointer">
+          <Link
+            href="/achievements"
+            className="mincho text-[14px] text-sumi px-3 py-2.5 block"
+          >
+            Achievements
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="bg-sumi/15 m-0" />
+        <DropdownMenuItem
+          onSelect={onSignOut}
+          className="rounded-none focus:bg-vermillion focus:text-bone cursor-pointer mincho text-[14px] text-vermillion px-3 py-2.5"
+        >
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 const NAV: { key: NavKey; label: string; href: string }[] = [
@@ -28,6 +96,7 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
 export function Masthead({
   active,
   initial = "·",
+  email,
   variant = "default",
   gameTitle,
   timer,
@@ -124,7 +193,17 @@ export function Masthead({
           </nav>
         </div>
         <div className="flex items-center gap-[16px] md:gap-[22px] text-[13px] text-moss">
-          <div className="avatar">{initial.toUpperCase()}</div>
+          {email ? (
+            <AvatarDropdown initial={initial} email={email} />
+          ) : (
+            <Link
+              href="/auth/login"
+              className="avatar hover:bg-vermillion hover:text-bone transition-colors"
+              aria-label="sign in"
+            >
+              {initial.toUpperCase()}
+            </Link>
+          )}
         </div>
       </header>
 

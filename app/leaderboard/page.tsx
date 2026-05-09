@@ -139,7 +139,7 @@ export default async function Leaderboard({
 
   return (
     <>
-      <Masthead active="ledger" initial={initial} />
+      <Masthead active="ledger" initial={initial} email={user?.email ?? null} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] max-w-[1480px] mx-auto">
         {/* CITY RAIL */}
