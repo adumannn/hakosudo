@@ -25,8 +25,9 @@ export interface GameState {
   isComplete: boolean;
   puzzleId: string | null;
   dailyDate: string | null;
+  dailyNumber: number | null;
 
-  load: (p: { difficulty: Difficulty; givens: string; solution: string; puzzleId?: string; dailyDate?: string; }) => void;
+  load: (p: { difficulty: Difficulty; givens: string; solution: string; puzzleId?: string; dailyDate?: string; dailyNumber?: number; }) => void;
   resume: () => boolean;
   setCell: (i: number, v: number) => void;
   toggleNote: (i: number, v: number) => void;
@@ -60,8 +61,9 @@ export const useGame = create<GameState>((set, get) => ({
   isComplete: false,
   puzzleId: null,
   dailyDate: null,
+  dailyNumber: null,
 
-  load: ({ difficulty, givens, solution, puzzleId, dailyDate }) => {
+  load: ({ difficulty, givens, solution, puzzleId, dailyDate, dailyNumber }) => {
     const g = givens.split("").map(Number);
     const s = solution.split("").map(Number);
     const next = {
@@ -80,6 +82,7 @@ export const useGame = create<GameState>((set, get) => ({
       isComplete: false,
       puzzleId: puzzleId ?? null,
       dailyDate: dailyDate ?? null,
+      dailyNumber: dailyNumber ?? null,
     };
     set(next);
     safeLocal.set(KEY, next);

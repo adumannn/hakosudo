@@ -18,6 +18,7 @@ export default async function Daily() {
       difficulty={data.difficulty as Difficulty}
       puzzle={{ givens: data.givens, solution: data.solution }}
       dailyDate={date}
+      dailyNumber={data.seq}
     />
   );
 }

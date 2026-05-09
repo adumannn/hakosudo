@@ -15,6 +15,7 @@ interface Props {
   difficulty: Difficulty;
   puzzle: { id?: string; givens: string; solution: string };
   dailyDate?: string;
+  dailyNumber?: number;
 }
 
 const DIFF_LABEL: Record<Difficulty, string> = {
@@ -24,7 +25,7 @@ const DIFF_LABEL: Record<Difficulty, string> = {
   expert: "極 Expert",
 };
 
-export function GameShell({ difficulty, puzzle, dailyDate }: Props) {
+export function GameShell({ difficulty, puzzle, dailyDate, dailyNumber }: Props) {
   const load = useGame((s) => s.load);
   const setCell = useGame((s) => s.setCell);
   const toggleNote = useGame((s) => s.toggleNote);
@@ -43,8 +44,9 @@ export function GameShell({ difficulty, puzzle, dailyDate }: Props) {
       solution: puzzle.solution,
       puzzleId: puzzle.id,
       dailyDate,
+      dailyNumber,
     });
-  }, [load, difficulty, puzzle.givens, puzzle.solution, puzzle.id, dailyDate]);
+  }, [load, difficulty, puzzle.givens, puzzle.solution, puzzle.id, dailyDate, dailyNumber]);
 
   const board = useGame((s) => s.board);
   const notes = useGame((s) => s.notes);
@@ -154,7 +156,10 @@ export function GameShell({ difficulty, puzzle, dailyDate }: Props) {
       timeZone: "UTC",
     });
     const diffName = DIFF_LABEL[difficulty].split(" ")[1] ?? difficulty;
-    return `Daily № 0472 · ${day} ${month} · ${diffName}`;
+    const seq = dailyNumber != null
+      ? `№ ${dailyNumber.toString().padStart(4, "0")} · `
+      : "";
+    return `Daily ${seq}${day} ${month} · ${diffName}`;
   };
   const titleSegment = dailyDate
     ? formatDailyTitle(dailyDate)

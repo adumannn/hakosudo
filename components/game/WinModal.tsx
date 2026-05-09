@@ -19,6 +19,7 @@ export function WinModal() {
   const hintsUsed = useGame((s) => s.hintsUsed);
   const difficulty = useGame((s) => s.difficulty);
   const dailyDate = useGame((s) => s.dailyDate);
+  const dailyNumber = useGame((s) => s.dailyNumber);
   const board = useGame((s) => s.board);
 
   const [open, setOpen] = useState(false);
@@ -148,7 +149,7 @@ export function WinModal() {
           </DialogTitle>
           <p className="ital text-moss text-[18px] mt-3">
             {dailyDate
-              ? `Daily № 0472 · ${dailyDate}`
+              ? `Daily${dailyNumber != null ? ` № ${dailyNumber.toString().padStart(4, "0")}` : ""} · ${dailyDate}`
               : `${difficulty ?? "casual"} box closed.`}
           </p>
 
