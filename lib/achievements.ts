@@ -283,18 +283,3 @@ function formatTimeMS(s: number): string {
   const r = s % 60;
   return `${m}:${r.toString().padStart(2, "0")}`;
 }
-
-export const DEMO_STATUSES: AchievementStatus[] = [
-  { key: "streak_7", earned: true, earnedAt: "04 may 2026" },
-  { key: "streak_30", earned: true, earnedAt: "04 may 2026" },
-  { key: "streak_100", earned: false, progress: "22 / 100 days" },
-  { key: "speed_easy", earned: true, earnedAt: "12 apr 2026" },
-  { key: "speed_hard", earned: true, earnedAt: "28 apr 2026" },
-  { key: "speed_expert", earned: false, progress: "— 28:14 best" },
-  { key: "first_in", earned: true, earnedAt: "08 may 2026" },
-  { key: "before_dawn", earned: true, earnedAt: "15 mar 2026" },
-  { key: "after_midnight", earned: false },
-  { key: "beat_floor", earned: false },
-  { key: "no_help", earned: true, earnedAt: "02 may 2026" },
-  { key: "pure_run", earned: false },
-];
