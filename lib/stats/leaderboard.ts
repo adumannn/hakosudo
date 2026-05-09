@@ -56,3 +56,28 @@ export function computeDailySnapshot(input: {
     totalSubmitted: results.length,
   };
 }
+
+export function computeCityCounts(input: {
+  rows: { city: string | null }[];
+  userCity: string | null;
+}): { city: string; count: number }[] {
+  const { rows, userCity } = input;
+  const userKey = userCity ? userCity.trim().toLowerCase() : null;
+
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.city) continue;
+    const key = r.city.trim().toLowerCase();
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const sorted = Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([city, count]) => ({ city, count }));
+
+  if (userKey && !counts.has(userKey)) {
+    sorted.push({ city: userKey, count: 0 });
+  }
+  return sorted;
+}

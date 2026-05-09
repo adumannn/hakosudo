@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeDailySnapshot } from "@/lib/stats/leaderboard";
+import { computeDailySnapshot, computeCityCounts } from "@/lib/stats/leaderboard";
 
 describe("computeDailySnapshot", () => {
   it("returns nulls when no submissions exist", () => {
@@ -70,5 +70,61 @@ describe("computeDailySnapshot", () => {
       activeGamesCount: 0,
     });
     expect(snap.firstSolve?.username).toBe("earlier");
+  });
+});
+
+describe("computeCityCounts", () => {
+  it("returns user's city alone when there are no results", () => {
+    const out = computeCityCounts({
+      rows: [],
+      userCity: "almaty",
+    });
+    expect(out).toEqual([{ city: "almaty", count: 0 }]);
+  });
+
+  it("returns empty when no results and no user city", () => {
+    expect(computeCityCounts({ rows: [], userCity: null })).toEqual([]);
+  });
+
+  it("groups by lowercase-trim, sorted by count descending", () => {
+    const out = computeCityCounts({
+      rows: [
+        { city: "Almaty" },
+        { city: "almaty " },
+        { city: "Astana" },
+        { city: null },
+      ],
+      userCity: null,
+    });
+    expect(out).toEqual([
+      { city: "almaty", count: 2 },
+      { city: "astana", count: 1 },
+    ]);
+  });
+
+  it("user's city is appended with count 0 if absent from rows", () => {
+    const out = computeCityCounts({
+      rows: [{ city: "Astana" }],
+      userCity: "almaty",
+    });
+    expect(out).toEqual([
+      { city: "astana", count: 1 },
+      { city: "almaty", count: 0 },
+    ]);
+  });
+
+  it("user's city stays in the sorted list when it has results", () => {
+    const out = computeCityCounts({
+      rows: [
+        { city: "Almaty" },
+        { city: "Almaty" },
+        { city: "Astana" },
+      ],
+      userCity: "almaty",
+    });
+    expect(out).toEqual([
+      { city: "almaty", count: 2 },
+      { city: "astana", count: 1 },
+    ]);
   });
 });
