@@ -7,6 +7,8 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { resolveActiveSkinServer } from "@/lib/skins/server";
+import { SkinProvider } from "@/components/theme/SkinContext";
 
 const mincho = Shippori_Mincho({
   weight: ["400", "500", "600", "700", "800"],
@@ -50,15 +52,21 @@ export const viewport: Viewport = {
   themeColor: [{ media: "(prefers-color-scheme: light)", color: "#ECE3D0" }],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Resolve the home/chrome skin once at the layout level.
+  // /play/daily and /play/[difficulty] re-wrap with their own SkinProvider downstream.
+  const skin = await resolveActiveSkinServer({ surface: "home" });
+
   return (
     <html
       lang="en"
       className={`${mincho.variable} ${jakarta.variable} ${mono.variable} ${cormorant.variable}`}
     >
-      <body>
-        {children}
-        <Toaster />
+      <body data-skin={skin.paletteKey}>
+        <SkinProvider skin={skin}>
+          {children}
+          <Toaster />
+        </SkinProvider>
       </body>
     </html>
   );

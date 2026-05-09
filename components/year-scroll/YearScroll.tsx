@@ -134,7 +134,7 @@ export function YearScroll({
                 }}
               >
                 <Seal
-                  kanji={entry.kanji}
+                  kanji={entry.sealKanji}
                   state={entry.state}
                   size={sealSize}
                   onClick={

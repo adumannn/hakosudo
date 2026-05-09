@@ -10,6 +10,7 @@ import {
 import { useGame } from "@/lib/store/game-store";
 import { formatTime } from "@/lib/utils";
 import { ScrollContextStrip } from "@/components/year-scroll/ScrollContextStrip";
+import { useSkin } from "@/components/theme/SkinContext";
 import type { SealEntry, YearSeries } from "@/lib/seal/types";
 
 export function WinModal() {
@@ -21,6 +22,7 @@ export function WinModal() {
   const dailyDate = useGame((s) => s.dailyDate);
   const dailyNumber = useGame((s) => s.dailyNumber);
   const board = useGame((s) => s.board);
+  const skin = useSkin();
 
   const [open, setOpen] = useState(false);
   const [consent, setConsent] = useState(true);
@@ -115,7 +117,7 @@ export function WinModal() {
   const todayAlreadyFilled = !!series?.seals.find((s) => s.date === dailyDate && s.state === "filled");
   const filledCount = baseFilled + (dailyDate && !todayAlreadyFilled ? 1 : 0);
   const totalDays = series?.seals.length ?? 365;
-  const todayKanji = series?.seals.find((s) => s.date === dailyDate)?.kanji ?? "完";
+  const todayKanji = skin.sealKanji;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

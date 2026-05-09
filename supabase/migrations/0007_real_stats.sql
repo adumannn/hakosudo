@@ -17,11 +17,18 @@ update public.daily_puzzles dp
  where dp.date = o.date;
 
 -- Advance the sequence past the backfilled values so future inserts
--- don't collide with them.
-select setval(
-  'daily_puzzles_seq_seq',
-  coalesce((select max(seq) from public.daily_puzzles), 0)
-);
+-- don't collide with them. Skip when the table is empty (e.g. fresh
+-- preview DB) — setval rejects 0 as < the sequence's min_value.
+do $$
+begin
+  if exists (select 1 from public.daily_puzzles) then
+    perform setval(
+      'daily_puzzles_seq_seq',
+      (select max(seq) from public.daily_puzzles)
+    );
+  end if;
+end
+$$;
 
 alter table public.daily_puzzles
   alter column seq set not null;

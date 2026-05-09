@@ -16,6 +16,7 @@ describe("assembleYearSeries", () => {
       completedByDate: new Map([["2026-05-08", 312]]),
       frozenDates: new Set(),
       signupDate: "2026-04-01",
+      sealKanjiByDate: new Map(),
     });
     const byDate = Object.fromEntries(series.seals.map((s) => [s.date, s]));
     expect(byDate["2026-05-08"].state).toBe("filled");
@@ -31,6 +32,7 @@ describe("assembleYearSeries", () => {
       completedByDate: new Map(),
       frozenDates: new Set(),
       signupDate: "2026-04-01",
+      sealKanjiByDate: new Map(),
     });
     const byDate = Object.fromEntries(series.seals.map((s) => [s.date, s]));
     expect(byDate["2026-05-08"].state).toBe("empty");
@@ -43,6 +45,7 @@ describe("assembleYearSeries", () => {
       completedByDate: new Map(),
       frozenDates: new Set(["2026-05-08"]),
       signupDate: "2026-04-01",
+      sealKanjiByDate: new Map(),
     });
     const byDate = Object.fromEntries(series.seals.map((s) => [s.date, s]));
     expect(byDate["2026-05-08"].state).toBe("freeze");
@@ -55,6 +58,7 @@ describe("assembleYearSeries", () => {
       completedByDate: new Map(),
       frozenDates: new Set(),
       signupDate: "2026-05-09",
+      sealKanjiByDate: new Map(),
     });
     const byDate = Object.fromEntries(series.seals.map((s) => [s.date, s]));
     expect(byDate["2026-05-08"].state).toBe("pre-signup");
@@ -67,6 +71,7 @@ describe("assembleYearSeries", () => {
       completedByDate: new Map([["2026-05-09", 712]]),
       frozenDates: new Set(),
       signupDate: "2026-04-01",
+      sealKanjiByDate: new Map(),
     });
     const byDate = Object.fromEntries(series.seals.map((s) => [s.date, s]));
     expect(byDate["2026-05-09"].state).toBe("filled");
@@ -80,6 +85,7 @@ describe("assembleYearSeries", () => {
       completedByDate: new Map(),
       frozenDates: new Set(),
       signupDate: "2026-04-01",
+      sealKanjiByDate: new Map(),
     });
     expect(series.todayIndex).toBe(1); // 2026-05-09 is index 1 in CAL
     expect(series.year).toBe(2026);

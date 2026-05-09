@@ -10,6 +10,7 @@ import { WinModal } from "./WinModal";
 import { CoachPopover, SenseiBody } from "./CoachPopover";
 import { Masthead } from "@/components/Masthead";
 import { saveGame } from "@/app/actions/save-game";
+import { useSkin } from "@/components/theme/SkinContext";
 
 interface Props {
   difficulty: Difficulty;
@@ -26,6 +27,7 @@ const DIFF_LABEL: Record<Difficulty, string> = {
 };
 
 export function GameShell({ difficulty, puzzle, dailyDate, dailyNumber }: Props) {
+  const skin = useSkin();
   const load = useGame((s) => s.load);
   const setCell = useGame((s) => s.setCell);
   const toggleNote = useGame((s) => s.toggleNote);
@@ -155,11 +157,12 @@ export function GameShell({ difficulty, puzzle, dailyDate, dailyNumber }: Props)
       month: "short",
       timeZone: "UTC",
     });
-    const diffName = DIFF_LABEL[difficulty].split(" ")[1] ?? difficulty;
     const seq = dailyNumber != null
       ? `№ ${dailyNumber.toString().padStart(4, "0")} · `
       : "";
-    return `Daily ${seq}${day} ${month} · ${diffName}`;
+    // Daily wears its season's kanji_label (春/夏/秋/冬) — not the difficulty.
+    // Difficulty is canonically Hard for daily; the seasonal glyph is more interesting.
+    return `Daily ${seq}${day} ${month} · ${skin.kanjiLabel}`;
   };
   const titleSegment = dailyDate
     ? formatDailyTitle(dailyDate)

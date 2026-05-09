@@ -21,6 +21,7 @@ export interface SealEntry {
   romaji: string;
   meaning: string;
   state: SealState;
+  sealKanji: string;       // from daily_puzzles.skin_id → skins.seal_kanji
   elapsedSeconds?: number; // present when state='filled'
 }
 

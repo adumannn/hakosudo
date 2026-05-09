@@ -13,6 +13,7 @@ import { assembleYearSeries } from "@/lib/seal/year";
 import { dateLine, weekdayJp } from "@/lib/kanji";
 import { computeDailySnapshot, computeCityCounts } from "@/lib/stats/leaderboard";
 import { getCity } from "@/lib/geo";
+import { resolveActiveSkinServer } from "@/lib/skins/server";
 import type { YearSeries } from "@/lib/seal/types";
 import { computeTodayRank } from "@/lib/stats/rank";
 import { YouTodayPanel } from "@/components/stats/YouTodayPanel";
@@ -34,6 +35,7 @@ function landingDateLabels(d: Date = new Date()): { jp: string; en: string } {
 }
 
 export default async function Home() {
+  const skin = await resolveActiveSkinServer({ surface: "home" });
   const sb = createServerClient();
   const {
     data: { session },
@@ -54,6 +56,13 @@ export default async function Home() {
     .select("line")
     .eq("date", today)
     .maybeSingle();
+  const { data: todayPuzzle } = await sb
+    .from("daily_puzzles")
+    .select("skins(seal_kanji)")
+    .eq("date", today)
+    .maybeSingle();
+  const todaySealKanji =
+    (todayPuzzle?.skins as { seal_kanji: string } | null)?.seal_kanji ?? "完";
   const todaySeal = todayCal
     ? {
         date: todayCal.date,
@@ -61,6 +70,7 @@ export default async function Home() {
         romaji: todayCal.romaji,
         meaning: todayCal.meaning,
         senseiLine: todayLine?.line ?? null,
+        sealKanji: todaySealKanji,
       }
     : null;
 
@@ -73,8 +83,13 @@ export default async function Home() {
   if (user) {
     const yearStart = `${year}-01-01`;
     const yearEnd = `${year}-12-31`;
-    const [{ data: cal }, { data: results }, { data: freezes }, { data: profile }] =
-      await Promise.all([
+    const [
+      { data: cal },
+      { data: results },
+      { data: freezes },
+      { data: profile },
+      { data: dailyMeta },
+    ] = await Promise.all([
         sb
           .from("daily_seal_calendar")
           .select("date,kanji,romaji,meaning")
@@ -87,6 +102,10 @@ export default async function Home() {
           .eq("user_id", user.id)
           .gte("date", yearStart).lte("date", yearEnd),
         sb.from("profiles").select("created_at,is_pro,city").eq("id", user.id).maybeSingle(),
+        sb
+          .from("daily_puzzles")
+          .select("date, skin_id, skins(seal_kanji)")
+          .gte("date", yearStart).lte("date", yearEnd),
       ]);
     profileCity = profile?.city ?? null;
     const completedByDate = new Map<string, number>();
@@ -94,6 +113,11 @@ export default async function Home() {
       completedByDate.set(r.date, r.elapsed_seconds);
     }
     const frozen = new Set<string>(((freezes ?? []) as { date: string }[]).map((f) => f.date));
+    type DailyMetaRow = { date: string; skin_id: string; skins: { seal_kanji: string } | null };
+    const sealKanjiByDate = new Map<string, string>();
+    for (const r of (dailyMeta ?? []) as unknown as DailyMetaRow[]) {
+      sealKanjiByDate.set(r.date, r.skins?.seal_kanji ?? "完");
+    }
     const signupDate = profile?.created_at
       ? new Date(profile.created_at).toISOString().slice(0, 10)
       : yearStart;
@@ -103,6 +127,7 @@ export default async function Home() {
       completedByDate,
       frozenDates: frozen,
       signupDate,
+      sealKanjiByDate,
     });
     streak = computeUnifiedStreak(today, new Set(completedByDate.keys()), frozen);
     completedTodayElapsed = completedByDate.get(today);
@@ -225,6 +250,10 @@ export default async function Home() {
 
       <main className="px-6 lg:px-24 py-10 lg:py-16 max-w-[1480px] mx-auto">
         <div className="eyebrow red">{dateLine()}</div>
+        <div className="mono text-[10px] tracking-[0.18em] uppercase text-moss mt-1">
+          vol · <strong className="text-vermillion font-medium">{skin.kanjiLabel}</strong>{" "}
+          {skin.slug.replace(/-/g, " ")} · in print
+        </div>
 
         {profileCity === null && (
           <div className="mt-6 max-w-[640px]">
@@ -254,6 +283,39 @@ export default async function Home() {
               todayElapsed={completedTodayElapsed ?? null}
               todayRank={todayRank}
             />
+          </div>
+        </section>
+
+        {/* ── Band 1.5 · Casual ──────────────────────────────────── */}
+        <section className="mt-12 max-w-[640px] border-t border-sumi/20 pt-6">
+          <div className="flex items-baseline justify-between mb-3.5">
+            <div className="eyebrow">§ casual</div>
+            <Link href="/play" className="ital text-vermillion text-[14px] hover:underline">
+              see all →
+            </Link>
+          </div>
+          <p className="ital text-moss text-[14px] mb-4">
+            — pick a floor. Your streak rests with the daily.
+          </p>
+          <div className="grid grid-cols-4 border-[1.5px] border-sumi">
+            {[
+              { k: "易", href: "/play/easy" },
+              { k: "中", href: "/play/medium" },
+              { k: "難", href: "/play/hard" },
+              { k: "極", href: "/play/expert", accent: true },
+            ].map((t, i, arr) => (
+              <Link
+                key={t.k}
+                href={t.href}
+                className={
+                  "p-4 flex items-center justify-center mincho font-semibold text-[36px] -tracking-[0.02em] transition-opacity hover:opacity-80 " +
+                  (i < arr.length - 1 ? "border-r-[1.5px] border-sumi " : "") +
+                  (t.accent ? "bg-vermillion text-bone" : "bg-bone text-sumi")
+                }
+              >
+                {t.k}
+              </Link>
+            ))}
           </div>
         </section>
 

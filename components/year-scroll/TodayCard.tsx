@@ -10,6 +10,7 @@ interface TodaySeal {
   romaji: string;
   meaning: string;
   senseiLine: string | null;
+  sealKanji: string;
 }
 
 interface Props {
@@ -84,7 +85,7 @@ export function TodayCard({
 
         <div className="w-full max-w-[400px] aspect-square mx-auto lg:mx-0 hero-seal-impression">
           <Seal
-            kanji={today.kanji}
+            kanji={today.sealKanji}
             state={stamped ? "filled" : "today"}
             size="xl"
           />

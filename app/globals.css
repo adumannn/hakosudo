@@ -588,3 +588,75 @@
   transform: rotate(-3deg);
   vertical-align: middle;
 }
+
+/* ============================================================
+   Skin overrides — [data-skin="<key>"]
+   Only these tokens shift per skin. Sumi, hazard, seal, fonts,
+   radius, masthead heights all inherit from :root.
+   ============================================================ */
+
+[data-skin="default"] {
+  /* Explicit reset so a nested wrapper marked default returns to the base
+     palette even when an ancestor wears a season skin. An empty block does
+     not clear inherited custom properties at the matched element's scope. */
+  --bone: 41 38% 87%;
+  --rice: 41 51% 91%;
+  --vermillion: 9 66% 46%;
+  --vermillion-deep: 9 66% 33%;
+  --moss: 33 19% 33%;
+  --moss-2: 38 16% 47%;
+}
+
+[data-skin="spring"] {
+  --bone: 30 35% 95%;
+  --rice: 32 28% 92%;
+  --vermillion: 354 60% 53%;
+  --vermillion-deep: 354 65% 38%;
+  --moss: 14 18% 38%;
+  --moss-2: 14 18% 50%;
+}
+
+[data-skin="summer"] {
+  --bone: 60 22% 94%;
+  --rice: 60 18% 91%;
+  --vermillion: 8 75% 50%;
+  --vermillion-deep: 8 80% 36%;
+  --moss: 130 14% 32%;
+  --moss-2: 130 14% 44%;
+}
+
+[data-skin="autumn"] {
+  --bone: 38 40% 92%;
+  --rice: 36 32% 89%;
+  --vermillion: 18 70% 48%;
+  --vermillion-deep: 18 75% 34%;
+  --moss: 32 18% 32%;
+  --moss-2: 32 18% 44%;
+}
+
+[data-skin="winter"] {
+  --bone: 210 18% 95%;
+  --rice: 210 14% 92%;
+  --vermillion: 0 65% 38%;
+  --vermillion-deep: 0 70% 28%;
+  --moss: 215 12% 36%;
+  --moss-2: 215 12% 48%;
+}
+
+[data-skin="sumi"] {
+  --bone: 40 8% 96%;
+  --rice: 40 6% 93%;
+  --vermillion: 0 0% 18%;
+  --vermillion-deep: 0 0% 8%;
+  --moss: 0 0% 38%;
+  --moss-2: 0 0% 50%;
+}
+
+[data-skin="indigo"] {
+  --bone: 220 12% 95%;
+  --rice: 220 10% 92%;
+  --vermillion: 220 45% 38%;
+  --vermillion-deep: 220 55% 24%;
+  --moss: 220 14% 38%;
+  --moss-2: 220 14% 50%;
+}

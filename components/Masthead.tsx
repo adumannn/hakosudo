@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
 
-type NavKey = "today" | "casual" | "ledger" | "profile" | "pro";
+type NavKey = "today" | "play" | "ledger" | "profile" | "pro";
 
 interface MastheadProps {
   active?: NavKey;
@@ -102,7 +102,7 @@ function AvatarDropdown({
 
 const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: "today", label: "Today", href: "/" },
-  { key: "casual", label: "Casual", href: "/play/medium" },
+  { key: "play", label: "Casual", href: "/play" },
   { key: "ledger", label: "Ledger", href: "/leaderboard" },
   { key: "profile", label: "Profile", href: "/profile" },
   { key: "pro", label: "Pro", href: "/pro" },

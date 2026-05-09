@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { GameShell } from "@/components/game/GameShell";
 import { todayUTC } from "@/lib/utils";
 import { Difficulty } from "@/lib/sudoku/types";
+import { resolveActiveSkinServer } from "@/lib/skins/server";
+import { SkinProvider } from "@/components/theme/SkinContext";
 
 export default async function Daily() {
   const sb = createServerClient();
@@ -13,12 +15,19 @@ export default async function Daily() {
     .eq("date", date)
     .maybeSingle();
   if (!data) notFound();
+
+  const skin = await resolveActiveSkinServer({ surface: "daily", dailyDate: date });
+
   return (
-    <GameShell
-      difficulty={data.difficulty as Difficulty}
-      puzzle={{ givens: data.givens, solution: data.solution }}
-      dailyDate={date}
-      dailyNumber={data.seq}
-    />
+    <div data-skin={skin.paletteKey}>
+      <SkinProvider skin={skin}>
+        <GameShell
+          difficulty={data.difficulty as Difficulty}
+          puzzle={{ givens: data.givens, solution: data.solution }}
+          dailyDate={date}
+          dailyNumber={data.seq}
+        />
+      </SkinProvider>
+    </div>
   );
 }

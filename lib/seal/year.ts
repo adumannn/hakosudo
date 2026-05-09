@@ -8,10 +8,11 @@ export interface AssembleInput {
   completedByDate: Map<string, number>; // date → elapsedSeconds
   frozenDates: Set<string>;
   signupDate: string; // 'YYYY-MM-DD' — first date the user existed
+  sealKanjiByDate: Map<string, string>; // date → seal kanji from each day's skin
 }
 
 export function assembleYearSeries(input: AssembleInput): YearSeries {
-  const { today, calendar, completedByDate, frozenDates, signupDate } = input;
+  const { today, calendar, completedByDate, frozenDates, signupDate, sealKanjiByDate } = input;
   const seals: SealEntry[] = calendar.map((c) => {
     const state = stateFor(c.date, today, completedByDate, frozenDates, signupDate);
     const entry: SealEntry = {
@@ -20,6 +21,7 @@ export function assembleYearSeries(input: AssembleInput): YearSeries {
       romaji: c.romaji,
       meaning: c.meaning,
       state,
+      sealKanji: sealKanjiByDate.get(c.date) ?? "完",
     };
     if (state === "filled") {
       entry.elapsedSeconds = completedByDate.get(c.date)!;

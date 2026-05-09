@@ -22,8 +22,13 @@ export async function GET() {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
 
-  const [{ data: calendar }, { data: results }, { data: freezes }, { data: profile }] =
-    await Promise.all([
+  const [
+    { data: calendar },
+    { data: results },
+    { data: freezes },
+    { data: profile },
+    { data: dailyMeta },
+  ] = await Promise.all([
       sb
         .from("daily_seal_calendar")
         .select("date,kanji,romaji,meaning")
@@ -43,6 +48,11 @@ export async function GET() {
         .gte("date", yearStart)
         .lte("date", yearEnd),
       sb.from("profiles").select("created_at").eq("id", userId).maybeSingle(),
+      sb
+        .from("daily_puzzles")
+        .select("date, skin_id, skins(seal_kanji)")
+        .gte("date", yearStart)
+        .lte("date", yearEnd),
     ]);
 
   const completedByDate = new Map<string, number>();
@@ -52,6 +62,11 @@ export async function GET() {
   const frozenDates = new Set<string>(
     ((freezes ?? []) as { date: string }[]).map((f) => f.date),
   );
+  type DailyMetaRow = { date: string; skin_id: string; skins: { seal_kanji: string } | null };
+  const sealKanjiByDate = new Map<string, string>();
+  for (const r of (dailyMeta ?? []) as unknown as DailyMetaRow[]) {
+    sealKanjiByDate.set(r.date, r.skins?.seal_kanji ?? "完");
+  }
   const signupDate = profile?.created_at
     ? new Date(profile.created_at).toISOString().slice(0, 10)
     : yearStart;
@@ -62,6 +77,7 @@ export async function GET() {
     completedByDate,
     frozenDates,
     signupDate,
+    sealKanjiByDate,
   });
 
   return NextResponse.json(series);

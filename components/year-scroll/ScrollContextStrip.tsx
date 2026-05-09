@@ -28,7 +28,7 @@ export function ScrollContextStrip({ window, filledCount, totalDays }: Props) {
               transition={isToday ? { duration: 0.5, ease: "easeOut" } : undefined}
               className="w-7 h-7"
             >
-              <Seal kanji={entry.kanji} state={entry.state} size="sm" />
+              <Seal kanji={entry.sealKanji} state={entry.state} size="sm" />
             </motion.div>
           );
         })}
