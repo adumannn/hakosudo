@@ -11,6 +11,7 @@
     "verify-generator": "tsx scripts/verify-generator.ts",
     "seed": "tsx scripts/seed-puzzles.ts",
     "seed-seal": "tsx scripts/seed-seal-calendar.ts",
+    "seed-skins": "tsx scripts/seed-skins.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
