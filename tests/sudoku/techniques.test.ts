@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findHint, candidates } from "@/lib/sudoku/techniques";
+import { findHint, candidates, findLockedCandidate } from "@/lib/sudoku/techniques";
 
 const parse = (s: string) => s.split("").map((c) => (c === "." ? 0 : +c));
 
@@ -25,5 +25,26 @@ describe("findHint", () => {
   it("returns null on a solved board", () => {
     const solved = parse("534678912672195348198342567859761423426853791713924856961537284287419635345286179");
     expect(findHint(solved)).toBeNull();
+  });
+});
+
+describe("findLockedCandidate", () => {
+  it("detects a digit confined to one row inside a box", () => {
+    // Box 0 (top-left 3x3) has no 7. Row 1 has a 7 at col 5, row 2 has a 7 at col 4.
+    // So 7 in box 0 can only live in row 0 → 7 is eliminated from rest of row 0.
+    const b = Array(81).fill(0);
+    b[14] = 7;  // (1,5)
+    b[22] = 7;  // (2,4)
+    const hint = findLockedCandidate(b);
+    expect(hint).not.toBeNull();
+    expect(hint!.technique).toBe("locked-candidate");
+    expect(hint!.value).toBe(7);
+    expect(hint!.unit).toMatch(/box 1/);
+    expect(hint!.cells).toEqual(expect.arrayContaining([0, 1, 2])); // row 0 cells in box 0
+  });
+
+  it("returns null when no locked candidate applies", () => {
+    const b = parse(".".repeat(81));
+    expect(findLockedCandidate(b)).toBeNull();
   });
 });

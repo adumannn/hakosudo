@@ -83,6 +83,62 @@ export function findHint(b: Board): Hint | null {
   return null;
 }
 
+export function findLockedCandidate(b: Board): Hint | null {
+  // For each box × digit: if all candidate cells for that digit inside the
+  // box share a single row or single column, the digit is "locked" — it
+  // can be eliminated from the rest of that line.
+  for (let bi = 0; bi < 9; bi++) {
+    const br = Math.floor(bi / BOX) * BOX;
+    const bc = (bi % BOX) * BOX;
+    const boxCells: number[] = [];
+    for (let dr = 0; dr < BOX; dr++)
+      for (let dc = 0; dc < BOX; dc++) boxCells.push(idx(br + dr, bc + dc));
+
+    for (let v = 1; v <= 9; v++) {
+      if (boxCells.some((i) => b[i] === v)) continue; // already placed in box
+      const cands = boxCells.filter((i) => !b[i] && candidates(b, i).includes(v));
+      if (cands.length < 2) continue; // 0 = no candidates; 1 = hidden single (handled elsewhere)
+      const rows = new Set(cands.map((i) => rc(i)[0]));
+      const cols = new Set(cands.map((i) => rc(i)[1]));
+      if (rows.size === 1) {
+        const r = [...rows][0];
+        // Confirm the constraint actually eliminates something outside the box.
+        const eliminatesOutside = Array.from({ length: SIZE }, (_, c) => idx(r, c))
+          .filter((i) => { const [, cc] = rc(i); return cc < bc || cc >= bc + BOX; })
+          .some((i) => !b[i] && candidates(b, i).includes(v));
+        if (!eliminatesOutside) continue;
+        return {
+          index: cands[0],
+          value: v,
+          technique: "locked-candidate",
+          unit: `box ${bi + 1}`,
+          cells: cands,
+          reason: `In box ${bi + 1}, ${v} can only sit in row ${r + 1} — so ${v} is eliminated from the rest of row ${r + 1}.`,
+        };
+      }
+      if (cols.size === 1) {
+        const c = [...cols][0];
+        const eliminatesOutside = Array.from({ length: SIZE }, (_, r) => idx(r, c))
+          .filter((i) => {
+            const [rr] = rc(i);
+            return rr < br || rr >= br + BOX;
+          })
+          .some((i) => !b[i] && candidates(b, i).includes(v));
+        if (!eliminatesOutside) continue;
+        return {
+          index: cands[0],
+          value: v,
+          technique: "locked-candidate",
+          unit: `box ${bi + 1}`,
+          cells: cands,
+          reason: `In box ${bi + 1}, ${v} can only sit in column ${c + 1} — so ${v} is eliminated from the rest of column ${c + 1}.`,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 const cellName = (i: number) => { const [r, c] = rc(i); return `R${r + 1}C${c + 1}`; };
 const unitKind = (u: number[]) => {
   const [r0] = rc(u[0]), [r1] = rc(u[1]);
