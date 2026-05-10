@@ -7,7 +7,13 @@ export async function POST(req: Request) {
   const sb = createServerClient();
   const {
     data: { user },
+    error: userError,
   } = await sb.auth.getUser();
+  if (userError) {
+    // Auth service failure (AuthApiError, network) — surface as 5xx, not a login redirect.
+    console.error("[stripe/checkout/skin] auth.getUser:", userError);
+    return NextResponse.json({ error: "checkout temporarily unavailable" }, { status: 503 });
+  }
   if (!user) {
     return NextResponse.redirect(new URL("/auth/login", process.env.NEXT_PUBLIC_SITE_URL!));
   }
@@ -44,7 +50,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "skin not found" }, { status: 404 });
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  // Guard env var explicitly: stripe-node v17 throws synchronously from new Stripe()
+  // when the key is missing/undefined, which would escape the try/catch below.
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecretKey) {
+    console.error("[stripe/checkout/skin] missing STRIPE_SECRET_KEY");
+    return NextResponse.json({ error: "checkout temporarily unavailable" }, { status: 503 });
+  }
+  const stripe = new Stripe(stripeSecretKey);
   let session: Stripe.Checkout.Session;
   try {
     session = await stripe.checkout.sessions.create({
