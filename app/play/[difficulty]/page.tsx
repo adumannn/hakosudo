@@ -4,6 +4,7 @@ import { GameShell } from "@/components/game/GameShell";
 import { Difficulty } from "@/lib/sudoku/types";
 import { resolveActiveSkinServer } from "@/lib/skins/server";
 import { SkinProvider } from "@/components/theme/SkinContext";
+import { getSfxEnabledServer } from "@/lib/sfx/server";
 
 const VALID = ["easy", "medium", "hard", "expert"] as const;
 
@@ -20,12 +21,19 @@ export default async function Page({ params }: { params: { difficulty: string } 
   const pick = data[Math.floor(Math.random() * data.length)];
 
   // Casual surface: user override (Pro-only) or current-date season fallback.
-  const skin = await resolveActiveSkinServer({ surface: "casual" });
+  const [skin, sfxEnabled] = await Promise.all([
+    resolveActiveSkinServer({ surface: "casual" }),
+    getSfxEnabledServer(),
+  ]);
 
   return (
     <div data-skin={skin.paletteKey}>
       <SkinProvider skin={skin}>
-        <GameShell difficulty={params.difficulty as Difficulty} puzzle={pick} />
+        <GameShell
+          difficulty={params.difficulty as Difficulty}
+          puzzle={pick}
+          sfxEnabled={sfxEnabled}
+        />
       </SkinProvider>
     </div>
   );

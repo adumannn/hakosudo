@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { useGame } from "@/lib/store/game-store";
 import { cn } from "@/lib/utils";
+import { playSfx } from "@/lib/sfx";
 
 interface NumberPadProps {
   onPause?: () => void;
@@ -15,6 +16,7 @@ export function NumberPad({ onPause, paused, variant = "default" }: NumberPadPro
   const noteMode = useGame((s) => s.noteMode);
   const board = useGame((s) => s.board);
   const givens = useGame((s) => s.givens);
+  const isComplete = useGame((s) => s.isComplete);
   const selectedVal = selected != null ? board[selected] : 0;
   const setCell = useGame((s) => s.setCell);
   const toggleNote = useGame((s) => s.toggleNote);
@@ -34,7 +36,20 @@ export function NumberPad({ onPause, paused, variant = "default" }: NumberPadPro
 
   const press = (v: number) => {
     if (selected == null) return;
-    noteMode ? toggleNote(selected, v) : setCell(selected, v);
+
+    if (noteMode) {
+      toggleNote(selected, v);
+      return;
+    }
+
+    const shouldPlayPlacement =
+      !isComplete && givens[selected] === 0 && board[selected] === 0;
+
+    setCell(selected, v);
+
+    if (shouldPlayPlacement) {
+      playSfx("place");
+    }
   };
 
   const erase = () => {

@@ -11,12 +11,14 @@ import { CoachPopover, SenseiBody } from "./CoachPopover";
 import { Masthead } from "@/components/Masthead";
 import { saveGame } from "@/app/actions/save-game";
 import { useSkin } from "@/components/theme/SkinContext";
+import { preloadSfx, setSfxEnabled } from "@/lib/sfx";
 
 interface Props {
   difficulty: Difficulty;
   puzzle: { id?: string; givens: string; solution: string };
   dailyDate?: string;
   dailyNumber?: number;
+  sfxEnabled?: boolean;
 }
 
 const DIFF_LABEL: Record<Difficulty, string> = {
@@ -26,7 +28,13 @@ const DIFF_LABEL: Record<Difficulty, string> = {
   expert: "極 Expert",
 };
 
-export function GameShell({ difficulty, puzzle, dailyDate, dailyNumber }: Props) {
+export function GameShell({
+  difficulty,
+  puzzle,
+  dailyDate,
+  dailyNumber,
+  sfxEnabled = false,
+}: Props) {
   const skin = useSkin();
   const load = useGame((s) => s.load);
   const setCell = useGame((s) => s.setCell);
@@ -49,6 +57,11 @@ export function GameShell({ difficulty, puzzle, dailyDate, dailyNumber }: Props)
       dailyNumber,
     });
   }, [load, difficulty, puzzle.givens, puzzle.solution, puzzle.id, dailyDate, dailyNumber]);
+
+  useEffect(() => {
+    setSfxEnabled(sfxEnabled);
+    preloadSfx();
+  }, [sfxEnabled]);
 
   const board = useGame((s) => s.board);
   const notes = useGame((s) => s.notes);
