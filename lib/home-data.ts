@@ -101,12 +101,16 @@ export function getPublicDailyResults(date: string): Promise<SnapshotRow[]> {
     async (): Promise<SnapshotRow[]> => {
       const sb = createPublicClient();
       if (!sb) return [];
-      const { data } = await sb
+      const { data, error } = await sb
         .from("daily_results")
         .select("user_id,elapsed_seconds,city,created_at,profiles(username)")
         .eq("date", date)
         .order("elapsed_seconds", { ascending: true })
         .order("created_at", { ascending: true });
+      // Throw rather than fall through to []. unstable_cache won't memoize
+      // a thrown error, so a transient blip won't poison the 30s TTL with
+      // a bogus "empty leaderboard" snapshot.
+      if (error) throw error;
       type RawRow = {
         user_id: string;
         elapsed_seconds: number;
@@ -136,11 +140,14 @@ export function getActiveGamesCount(): Promise<number> {
       const sb = createPublicClient();
       if (!sb) return 0;
       const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-      const { count } = await sb
+      const { count, error } = await sb
         .from("games")
         .select("*", { count: "exact", head: true })
         .eq("is_complete", false)
         .gte("updated_at", fifteenMinAgo);
+      // Fail fast — caching `0` on a query failure would silently render
+      // "nobody solving now" for 30s, which is worse than a server error.
+      if (error) throw error;
       return count ?? 0;
     },
     ["home:active-games"],
