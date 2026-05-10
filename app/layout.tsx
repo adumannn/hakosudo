@@ -9,6 +9,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { resolveActiveSkinServer } from "@/lib/skins/server";
 import { SkinProvider } from "@/components/theme/SkinContext";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const mincho = Shippori_Mincho({
   weight: ["400", "500", "600", "700", "800"],
@@ -67,6 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {children}
           <Toaster />
         </SkinProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
