@@ -68,7 +68,7 @@ export default async function YearPage() {
       : yearStart;
     series = assembleYearSeries({
       today,
-      calendar: (cal ?? []) as any[],
+      calendar: (cal ?? []) as unknown as Parameters<typeof assembleYearSeries>[0]["calendar"],
       completedByDate,
       frozenDates,
       signupDate,

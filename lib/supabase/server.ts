@@ -33,10 +33,26 @@ export const createServerClient = () => {
 };
 
 // Minimal stub matching the surface our pages use. Anything else throws
-// loudly so we notice missing coverage during dev.
+// loudly so we notice missing coverage during dev. We cast through `unknown`
+// at the boundary because the null client deliberately doesn't implement the
+// full Supabase client surface — pages only consume `.from()` chains and the
+// auth methods covered here.
+type NullQueryStub = {
+  select: () => NullQueryStub;
+  eq: () => NullQueryStub;
+  order: () => NullQueryStub;
+  limit: () => NullQueryStub;
+  gte: () => NullQueryStub;
+  lte: () => NullQueryStub;
+  maybeSingle: () => Promise<{ data: null; error: null; count: 0 }>;
+  insert: () => Promise<{ data: null; error: null; count: 0 }>;
+  upsert: () => Promise<{ data: null; error: null; count: 0 }>;
+  then: (resolve: (v: { data: null; error: null; count: 0 }) => unknown) => unknown;
+};
+
 function makeNullClient() {
-  const noData = async () => ({ data: null, error: null, count: 0 });
-  const queryStub: any = {
+  const noData = async () => ({ data: null, error: null, count: 0 as const });
+  const queryStub: NullQueryStub = {
     select: () => queryStub,
     eq: () => queryStub,
     order: () => queryStub,
@@ -46,8 +62,7 @@ function makeNullClient() {
     maybeSingle: () => noData(),
     insert: () => noData(),
     upsert: () => noData(),
-    then: (resolve: (v: { data: null; error: null; count: 0 }) => unknown) =>
-      resolve({ data: null, error: null, count: 0 }),
+    then: (resolve) => resolve({ data: null, error: null, count: 0 }),
   };
   return {
     auth: {
@@ -55,5 +70,5 @@ function makeNullClient() {
       getSession: async () => ({ data: { session: null }, error: null }),
     },
     from: () => queryStub,
-  } as any;
+  } as unknown as ReturnType<typeof create>;
 }

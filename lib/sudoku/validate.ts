@@ -1,4 +1,4 @@
-import { Board, SIZE, BOX, idx, boxOf } from "./types";
+import { Board, SIZE, BOX, idx } from "./types";
 
 export function isValidPlacement(b: Board, r: number, c: number, v: number): boolean {
   if (v < 1 || v > 9) return false;

@@ -1,4 +1,4 @@
-import { Board, SIZE, BOX, idx, rc, boxOf } from "./types";
+import { Board, SIZE, BOX, idx, rc } from "./types";
 
 export type Technique =
   | "naked-single" | "hidden-single" | "locked-candidate"

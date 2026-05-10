@@ -1,4 +1,4 @@
-import { Board, SIZE, BOX, Difficulty, idx } from "./types";
+import { Board, BOX, Difficulty, idx } from "./types";
 import { mulberry32 } from "./seed";
 import { solve } from "./solver";
 import { countSolutions } from "./unique";

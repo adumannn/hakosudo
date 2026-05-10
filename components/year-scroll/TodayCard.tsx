@@ -17,7 +17,6 @@ interface Props {
   today: TodaySeal | null;
   /** When set, today has been completed and we render the post-solve variant. */
   completedElapsed?: number;
-  streakDays: number;
   /** Optional: yesterday missed + freezes-remaining; if both present, show prompt. */
   freezePrompt?: { date: string; kanji: string; remaining: number } | null;
   /** Vertical Japanese day label (e.g. 土曜日) for the left margin. */
@@ -27,7 +26,6 @@ interface Props {
 export function TodayCard({
   today,
   completedElapsed,
-  streakDays,
   freezePrompt,
   tategakiDay,
 }: Props) {
@@ -38,7 +36,7 @@ export function TodayCard({
       <div className="border-t border-b border-sumi py-12 lg:py-16 px-1">
         <div className="eyebrow">today</div>
         <p className="ital text-moss text-[18px] mt-3">
-          today's seal isn't ready yet — check back shortly.
+          today&rsquo;s seal isn&rsquo;t ready yet — check back shortly.
         </p>
       </div>
     );
@@ -103,7 +101,7 @@ export function TodayCard({
           </div>
           {today.senseiLine && (
             <p className="ital text-sumi text-[20px] lg:text-[22px] mt-5 leading-snug max-w-[44ch]">
-              "{today.senseiLine}"
+              &ldquo;{today.senseiLine}&rdquo;
             </p>
           )}
           <div className="mt-7 pt-5 border-t border-sumi/15 flex items-center gap-4 flex-wrap">

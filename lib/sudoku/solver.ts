@@ -1,4 +1,4 @@
-import { Board, SIZE, idx, boxOf } from "./types";
+import { Board, SIZE, boxOf } from "./types";
 
 export function solve(board: Board): Board | null {
   const b = board.slice();

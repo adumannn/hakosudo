@@ -222,7 +222,7 @@ export default async function Leaderboard({
             </div>
             {tableRows.length === 0 ? (
               <p className="ital text-moss text-[14px] py-6 px-1">
-                — the ledger fills as solvers finish today's box.
+                — the ledger fills as solvers finish today&rsquo;s box.
               </p>
             ) : (
               tableRows.map((r, i) => (
@@ -271,7 +271,7 @@ export default async function Leaderboard({
           )}
           {username && !standing && (
             <p className="ital text-moss text-[14px] mt-4">
-              — finish today's box to land on the ledger.
+              — finish today&rsquo;s box to land on the ledger.
             </p>
           )}
         </section>
