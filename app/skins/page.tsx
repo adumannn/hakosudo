@@ -30,6 +30,9 @@ export default async function SkinsPage({
   const premium = viewer.allSkins.filter(
     (s) => s.kind === "premium" && s.slug !== "default",
   );
+  const limited = viewer.allSkins
+    .filter((s) => s.kind === "limited")
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <main className="min-h-screen bg-bone">
@@ -48,7 +51,8 @@ export default async function SkinsPage({
           </h1>
           <p className="ital text-sumi/65 text-[18px] mt-3 max-w-[560px]">
             Seasons come in print, then file as back issues. Premium editions stay on the
-            shelf. Pro members wear any of them; one-off purchases stay yours.
+            shelf. Challenge unlocks reward streaks and milestones. Pro members wear any
+            of them; one-off purchases stay yours.
           </p>
         </header>
 
@@ -90,6 +94,17 @@ export default async function SkinsPage({
             ))}
           </div>
         </section>
+
+        {limited.length > 0 && (
+          <section className="mb-16">
+            <h2 className="mincho text-[20px] text-sumi mb-6">Challenge unlocks · 限</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {limited.map((s) => (
+                <SkinCard key={s.id} skin={s} action={getCatalogAction(s, viewer, today)} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {!viewer.isPro && (
           <footer className="border-t border-sumi/12 pt-10 text-center">

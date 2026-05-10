@@ -28,7 +28,11 @@ export function SkinCard({ skin, action }: SkinCardProps) {
         <div>
           <div className="mincho text-[18px] text-sumi font-semibold">{skin.name}</div>
           <div className="mono text-[10px] tracking-[0.18em] uppercase text-moss mt-0.5">
-            {skin.kind === "season" ? "seasonal volume" : "premium edition"}
+            {skin.kind === "season"
+              ? "seasonal volume"
+              : skin.kind === "limited"
+                ? "challenge unlock"
+                : "premium edition"}
           </div>
         </div>
       </header>
@@ -120,6 +124,17 @@ function renderAction(
         </div>
       );
     }
+    case "locked-challenge":
+      return (
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="mono text-[11px] tracking-[0.18em] uppercase text-moss/70">
+            locked
+          </span>
+          <span className="mincho text-[13px] text-sumi/70 italic">
+            {action.hint}
+          </span>
+        </div>
+      );
     case "hidden":
       return null;
   }

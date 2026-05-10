@@ -62,6 +62,28 @@ const LAUNCH_SKINS: SeedSkin[] = [
     masthead: "Today's depth.",
     start_date: null, end_date: null, price_cents: 300,
   },
+  // Challenge-unlock skins (kind: "limited"). Free, but require a
+  // user_skin_entitlements row with source="challenge". Auto-grant logic on
+  // challenge completion is a separate task — for now, rows are inserted
+  // manually for testing, mirroring the Pro / purchase manual fallback.
+  {
+    slug: "matsuri", kind: "limited", name: "Matsuri",
+    kanji_label: "祭", seal_kanji: "祭", palette_key: "matsuri",
+    masthead: "Today's lantern.",
+    start_date: null, end_date: null, price_cents: null,
+  },
+  {
+    slug: "koi", kind: "limited", name: "Koi",
+    kanji_label: "鯉", seal_kanji: "鯉", palette_key: "koi",
+    masthead: "Today's pond.",
+    start_date: null, end_date: null, price_cents: null,
+  },
+  {
+    slug: "yurei", kind: "limited", name: "Yūrei",
+    kanji_label: "幽", seal_kanji: "幽", palette_key: "yurei",
+    masthead: "Today's dawn.",
+    start_date: null, end_date: null, price_cents: null,
+  },
 ];
 
 async function main() {

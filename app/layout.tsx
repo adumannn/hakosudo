@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { resolveActiveSkinServer } from "@/lib/skins/server";
 import { getViewer } from "@/lib/skins/viewer";
 import { SkinProvider } from "@/components/theme/SkinContext";
+import { SkinParticles } from "@/components/skins/SkinParticles";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const mincho = Shippori_Mincho({
@@ -67,10 +68,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${mincho.variable} ${jakarta.variable} ${mono.variable} ${cormorant.variable}`}
     >
       <body data-skin={skin.paletteKey}>
-        <SkinProvider skin={skin}>
-          {children}
-          <Toaster />
-        </SkinProvider>
+        {/* Ambient particle layer — fixed, behind content. */}
+        <SkinParticles paletteKey={skin.paletteKey} />
+        {/* Content stacking context, sits above the particle layer. */}
+        <div className="hako-content">
+          <SkinProvider skin={skin}>
+            {children}
+            <Toaster />
+          </SkinProvider>
+        </div>
         <SpeedInsights />
       </body>
     </html>

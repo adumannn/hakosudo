@@ -10,7 +10,18 @@ export type CatalogAction =
   | { kind: "buy"; slug: string; priceCents: number }
   | { kind: "in-print"; seasonName: string }
   | { kind: "back-issue"; seasonName: string }
-  | { kind: "future"; startDate: string; seasonName: string };
+  | { kind: "future"; startDate: string; seasonName: string }
+  | { kind: "locked-challenge"; slug: string; hint: string };
+
+// Per-slug unlock hints for challenge-locked skins. Surfaced in the catalog
+// when a free user hasn't earned the entitlement yet. Auto-granting on
+// challenge completion is a separate task; this map is the source of truth
+// for the user-facing description of each challenge.
+const CHALLENGE_HINTS: Record<string, string> = {
+  matsuri: "7-day streak",
+  koi: "30 puzzles solved",
+  yurei: "solve a daily at 3 a.m.",
+};
 
 export function getCatalogAction(
   skin: SkinRecord,
@@ -29,7 +40,11 @@ export function getCatalogAction(
     return getSeasonAction(skin, viewer, today);
   }
 
-  // premium / limited path
+  if (skin.kind === "limited") {
+    return getChallengeAction(skin, viewer);
+  }
+
+  // Premium path (kind: "premium").
   if (viewer.isPro) {
     return { kind: "wear-included", skinId: skin.id };
   }
@@ -43,6 +58,26 @@ export function getCatalogAction(
   }
   // Premium skin without a Stripe price configured — treat as hidden.
   return { kind: "hidden" };
+}
+
+function getChallengeAction(
+  skin: SkinRecord,
+  viewer: Viewer,
+): CatalogAction {
+  // Pro users see all skins as included. Pro is the master gate for
+  // override; the challenge entitlement is the free path for non-Pro users.
+  if (viewer.isPro) {
+    return { kind: "wear-included", skinId: skin.id };
+  }
+  // Free user with an entitlement row (source="challenge") owns the skin.
+  if (viewer.ownedSkinIds.has(skin.id)) {
+    return { kind: "wear", skinId: skin.id };
+  }
+  // Locked. Surface a hint if we know one; otherwise hide so we don't
+  // render an unlabelled "Locked" CTA.
+  const hint = CHALLENGE_HINTS[skin.slug];
+  if (!hint) return { kind: "hidden" };
+  return { kind: "locked-challenge", slug: skin.slug, hint };
 }
 
 function getSeasonAction(

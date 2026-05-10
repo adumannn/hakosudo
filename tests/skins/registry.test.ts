@@ -2,15 +2,18 @@ import { describe, it, expect } from "vitest";
 import { SKIN_REGISTRY, getRegistryEntry } from "@/lib/skins/registry";
 
 describe("skin registry", () => {
-  it("contains the 7 launch slugs", () => {
+  it("contains the launch slugs (7) plus 3 challenge unlocks", () => {
     expect(Object.keys(SKIN_REGISTRY).sort()).toEqual([
       "autumn-2026",
       "default",
       "indigo",
+      "koi",
+      "matsuri",
       "spring-2026",
       "sumi-e",
       "summer-2026",
       "winter-2026",
+      "yurei",
     ]);
   });
 

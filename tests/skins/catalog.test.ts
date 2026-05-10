@@ -154,3 +154,71 @@ describe("getCatalogAction — default skin", () => {
     expect(action).toEqual({ kind: "hidden" });
   });
 });
+
+describe("getCatalogAction — challenge-unlock (limited) skins", () => {
+  const matsuri = skin({
+    id: "matsuri-id",
+    slug: "matsuri",
+    kind: "limited",
+    name: "Matsuri",
+    price_cents: null,
+  });
+  const koi = skin({
+    id: "koi-id",
+    slug: "koi",
+    kind: "limited",
+    name: "Koi",
+    price_cents: null,
+  });
+  const yurei = skin({
+    id: "yurei-id",
+    slug: "yurei",
+    kind: "limited",
+    name: "Yūrei",
+    price_cents: null,
+  });
+
+  it("free user without entitlement: shows locked-challenge with the matsuri hint", () => {
+    const action = getCatalogAction(matsuri, viewer({ isPro: false }), TODAY);
+    expect(action).toEqual({ kind: "locked-challenge", slug: "matsuri", hint: "7-day streak" });
+  });
+
+  it("free user without entitlement: shows locked-challenge with the koi hint", () => {
+    const action = getCatalogAction(koi, viewer({ isPro: false }), TODAY);
+    expect(action).toEqual({ kind: "locked-challenge", slug: "koi", hint: "30 puzzles solved" });
+  });
+
+  it("free user without entitlement: shows locked-challenge with the yurei hint", () => {
+    const action = getCatalogAction(yurei, viewer({ isPro: false }), TODAY);
+    expect(action).toEqual({ kind: "locked-challenge", slug: "yurei", hint: "solve a daily at 3 a.m." });
+  });
+
+  it("free user with entitlement (challenge completed): shows wear button", () => {
+    const action = getCatalogAction(
+      matsuri,
+      viewer({ isPro: false, ownedSkinIds: new Set(["matsuri-id"]) }),
+      TODAY,
+    );
+    expect(action).toEqual({ kind: "wear", skinId: "matsuri-id" });
+  });
+
+  it("Pro user (challenge skin): shows wear-included (no challenge required)", () => {
+    const action = getCatalogAction(matsuri, viewer({ isPro: true }), TODAY);
+    expect(action).toEqual({ kind: "wear-included", skinId: "matsuri-id" });
+  });
+
+  it("user already wearing the challenge skin: shows wearing", () => {
+    const action = getCatalogAction(
+      koi,
+      viewer({ isPro: false, ownedSkinIds: new Set(["koi-id"]), activeSkinId: "koi-id" }),
+      TODAY,
+    );
+    expect(action).toEqual({ kind: "wearing", skinId: "koi-id" });
+  });
+
+  it("limited skin without a known hint slug: hidden (avoid an unlabelled lock)", () => {
+    const unknown = skin({ id: "x-id", slug: "x-mystery", kind: "limited", name: "Mystery", price_cents: null });
+    const action = getCatalogAction(unknown, viewer({ isPro: false }), TODAY);
+    expect(action).toEqual({ kind: "hidden" });
+  });
+});
