@@ -121,9 +121,14 @@ function writeWav(samples: Float32Array, filePath: string): void {
 }
 
 function encodeMp3(wavPath: string, mp3Path: string): void {
-  // Encode to a temp .mp3 first, then rename — so a mid-encode failure
-  // can't leave a truncated file at the destination path.
-  const tmpMp3 = path.join(os.tmpdir(), `sudoku-sfx-${path.basename(mp3Path)}.tmp.mp3`);
+  // Encode to a sibling temp file in the destination directory, then rename —
+  // so a mid-encode failure can't leave a truncated file at the destination
+  // path. Sibling location ensures the rename is same-filesystem (avoids
+  // EXDEV when run in containers where /tmp is a separate mount).
+  const tmpMp3 = path.join(
+    path.dirname(mp3Path),
+    `.${path.basename(mp3Path)}.${process.pid}.tmp.mp3`,
+  );
   const result = spawnSync(
     "ffmpeg",
     ["-y", "-i", wavPath, "-codec:a", "libmp3lame", "-b:a", "128k", "-ac", "1", tmpMp3],
