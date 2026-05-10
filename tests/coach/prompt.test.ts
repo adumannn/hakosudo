@@ -114,4 +114,14 @@ describe("userMessage — downgrade payload", () => {
     expect(msg).toContain("Original target was R5C5");
     expect(msg).toContain("suggesting R1C1 instead");
   });
+
+  it("downgrade nudge omits the redirect block", () => {
+    const msg = userMessage(
+      { kind: "downgrade", redirect: { ...nakedSingle, redirect: true }, originalTarget: 40 },
+      "nudge",
+    );
+    expect(msg).toContain("Mode: downgrade");
+    expect(msg).not.toContain("Original target");
+    expect(msg).not.toContain("Suggested cell:");
+  });
 });

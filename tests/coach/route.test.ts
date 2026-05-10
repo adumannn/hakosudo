@@ -131,4 +131,21 @@ describe("POST /api/coach", () => {
     expect(callArg.contents).toContain("Mode: ask");
     expect(callArg.contents).toContain("Digit: 1");
   });
+
+  it("streams a downgrade payload when free user hits a pro-tier position", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
+    // Board where target has only a locked-candidate (pro-tier) hint available.
+    // Box 0 has no 7; row 1 col 5 and row 2 col 4 have 7, so 7 in box 0 is locked to row 0.
+    // Target = 1 (R1C2, in box 0). No naked/hidden single fires. Free user (is_pro: false by default).
+    const board = Array(81).fill(0);
+    board[14] = 7; // (1,5)
+    board[22] = 7; // (2,4)
+    const res = await POST(makeReq({ board, target: 1, kind: "ask" }));
+    expect(res.status).toBe(200);
+    await readStream(res);
+    expect(mockGenerateContentStream).toHaveBeenCalled();
+    const callArg = mockGenerateContentStream.mock.calls[0][0];
+    expect(callArg.contents).toContain("Mode: downgrade");
+  });
 });

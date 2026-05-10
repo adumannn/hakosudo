@@ -104,4 +104,36 @@ describe("findHintForCell", () => {
     const solved = parse("534678912672195348198342567859761423426853791713924856961537284287419635345286179");
     expect(findHintForCell(solved, 0, { proTechniques: false })).toBeNull();
   });
+
+  it("returns a pro-tier hint when only a pro-tier technique applies at target and proTechniques is true", () => {
+    // Box 0 (top-left 3x3) has no 7. Row 1 has a 7 at col 5 (index 14), row 2 has a 7 at col 4 (index 22).
+    // So 7 in box 0 can only live in row 0 (cells 0, 1, 2) → locked-candidate fires for box 0.
+    // Target = 1 (row 0, col 1) — in box 0. The board is otherwise empty so no naked/hidden singles fire.
+    // findProHintTouching checks lcBox (box of lc.index=0) === tbox (box of target=1) → both box 0. Match.
+    const b = Array(81).fill(0);
+    b[14] = 7; // (1,5)
+    b[22] = 7; // (2,4)
+    const result = findHintForCell(b, 1, { proTechniques: true });
+    expect(result).not.toBeNull();
+    expect("hint" in result!).toBe(true);
+    if ("hint" in result!) {
+      expect(result.tier).toBe("pro");
+      expect(result.hint.technique).toBe("locked-candidate");
+    }
+  });
+
+  it("returns a downgrade payload when only a pro-tier technique applies and proTechniques is false", () => {
+    // Same board as above, free user.
+    const b = Array(81).fill(0);
+    b[14] = 7;
+    b[22] = 7;
+    const result = findHintForCell(b, 1, { proTechniques: false });
+    expect(result).not.toBeNull();
+    expect("downgrade" in result!).toBe(true);
+    if (result && "downgrade" in result) {
+      expect(result.downgrade).toBe(true);
+      // redirect may be null (no singles-tier hint on this nearly-empty board) — that is fine;
+      // we only verify the downgrade discriminator fires.
+    }
+  });
 });

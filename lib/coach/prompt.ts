@@ -25,7 +25,7 @@ const cellName = (i: number) => {
 export function userMessage(payload: CoachPayload, kind: CoachKind): string {
   if (payload.kind === "downgrade") {
     const lines = ["Mode: downgrade"];
-    if (payload.redirect && payload.originalTarget != null) {
+    if (kind === "ask" && payload.redirect && payload.originalTarget != null) {
       lines.unshift(redirectLine(payload.originalTarget, payload.redirect.index));
       lines.push(`Suggested cell: ${cellName(payload.redirect.index)}`);
     }
