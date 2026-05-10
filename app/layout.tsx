@@ -1,23 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import {
-  Shippori_Mincho,
   Plus_Jakarta_Sans,
   JetBrains_Mono,
   Cormorant_Garamond,
 } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 import { resolveActiveSkinServer } from "@/lib/skins/server";
 import { getViewer } from "@/lib/skins/viewer";
-import { SkinProvider } from "@/components/theme/SkinContext";
 import { SkinParticles } from "@/components/skins/SkinParticles";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-const mincho = Shippori_Mincho({
-  weight: ["400", "500", "600", "700", "800"],
-  subsets: ["latin"],
+const mincho = localFont({
+  src: "./_fonts/shippori-mincho-700-hako.ttf",
   variable: "--font-mincho",
   display: "swap",
+  fallback: ["Hiragino Mincho ProN", "Yu Mincho", "serif"],
 });
 
 const jakarta = Plus_Jakarta_Sans({
@@ -57,7 +55,6 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Resolve the home/chrome skin once at the layout level.
-  // /play/daily and /play/[difficulty] re-wrap with their own SkinProvider downstream.
   // Fetch the viewer once and pass it through so the resolver doesn't re-query.
   const viewer = await getViewer();
   const skin = await resolveActiveSkinServer({ surface: "home", viewer });
@@ -72,10 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SkinParticles paletteKey={skin.paletteKey} />
         {/* Content stacking context, sits above the particle layer. */}
         <div className="hako-content">
-          <SkinProvider skin={skin}>
-            {children}
-            <Toaster />
-          </SkinProvider>
+          {children}
         </div>
         <SpeedInsights />
       </body>

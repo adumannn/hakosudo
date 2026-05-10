@@ -1,5 +1,7 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
+import { cookies } from "next/headers";
+import { hasSupabaseAuthCookie } from "@/lib/supabase/auth-cookie";
 import { createServerClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { SkinRecord } from "./types";
@@ -13,14 +15,16 @@ export interface Viewer {
   allSkins: SkinRecord[];
 }
 
-const EMPTY_VIEWER: Viewer = {
-  userId: null,
-  email: null,
-  isPro: false,
-  activeSkinId: null,
-  ownedSkinIds: new Set(),
-  allSkins: [],
-};
+function buildEmptyViewer(allSkins: SkinRecord[] = []): Viewer {
+  return {
+    userId: null,
+    email: null,
+    isPro: false,
+    activeSkinId: null,
+    ownedSkinIds: new Set<string>(),
+    allSkins,
+  };
+}
 
 // Skins are essentially static config (~10 rows, edited rarely). Cross-request
 // cache keeps SSR off the auth-shared Supabase pool for this read. The inner
@@ -59,22 +63,27 @@ async function fetchAllSkins(): Promise<SkinRecord[]> {
 // <SkinChip /> all call getViewer(); without this, each call re-queries
 // Supabase. With cache, the first call's promise is reused.
 export const getViewer = cache(async (): Promise<Viewer> => {
-  const sb = createServerClient();
-
   const logQueryError = (where: string, error: unknown) => {
     if (error) console.error(`[skins/viewer] ${where}:`, error);
   };
 
+  const allSkinsPromise = fetchAllSkins();
+  if (!hasSupabaseAuthCookie(cookies().getAll())) {
+    return buildEmptyViewer(await allSkinsPromise);
+  }
+
+  const sb = createServerClient();
+
   // Skins (cached cross-request) and the auth check are independent — fire in parallel.
   const [allSkins, userResult] = await Promise.all([
-    fetchAllSkins(),
+    allSkinsPromise,
     sb.auth.getUser(),
   ]);
   const { data: { user }, error: userError } = userResult;
   logQueryError("auth.getUser", userError);
 
   if (!user) {
-    return { ...EMPTY_VIEWER, allSkins };
+    return buildEmptyViewer(allSkins);
   }
 
   const [

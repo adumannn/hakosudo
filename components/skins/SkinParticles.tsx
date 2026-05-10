@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 
 type ParticleMode = "fall" | "firefly" | "rise" | "swim";
 
@@ -29,16 +27,37 @@ const CONFIG: Record<string, ParticleConfig> = {
   yurei:   { count: 7,  size: [14, 24], dur: [9, 16],    swayMax: 70,  rotate: false, mode: "rise" },
 };
 
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
-
 interface SkinParticlesProps {
   /** The resolved skin's `paletteKey` (e.g. "spring", "sumi", "matsuri"). */
   paletteKey: string;
 }
 
+type ParticleStyle = CSSProperties & Record<`--${string}`, string>;
+
+function hashString(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function makeRand(seed: number): () => number {
+  let state = seed || 1;
+  return () => {
+    state = Math.imul(state, 1664525) + 1013904223;
+    return (state >>> 0) / 4294967296;
+  };
+}
+
+function between(rand: () => number, a: number, b: number): number {
+  return a + rand() * (b - a);
+}
+
 /**
- * Per-skin ambient particle layer. Renders an aria-hidden div that, on mount,
- * is populated with N randomized spans whose CSS animations + per-skin masks
+ * Per-skin ambient particle layer. Renders an aria-hidden div populated with
+ * deterministic spans whose CSS animations + per-skin masks
  * deliver the skin's particle personality (sakura petals, fireflies, koi, …).
  *
  * The layer is `position: fixed`, sits below content (z-index: 0), and is
@@ -46,59 +65,57 @@ interface SkinParticlesProps {
  * from the nearest ancestor with `[data-skin]` (typically `<body>`).
  */
 export function SkinParticles({ paletteKey }: SkinParticlesProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const cfg = CONFIG[paletteKey];
 
-  useEffect(() => {
-    const layer = ref.current;
-    if (!layer) return;
+  if (!cfg) {
+    return <div className="hako-particles" aria-hidden="true" />;
+  }
 
-    // Clear any previous spans (re-runs on paletteKey change).
-    layer.innerHTML = "";
+  const rand = makeRand(hashString(paletteKey));
+  const particles = Array.from({ length: cfg.count }, () => {
+    const style: ParticleStyle = {
+      "--sz": `${between(rand, cfg.size[0], cfg.size[1]).toFixed(1)}px`,
+      "--x": `${between(rand, -2, 100).toFixed(1)}%`,
+      "--sway": `${between(rand, -cfg.swayMax, cfg.swayMax).toFixed(0)}px`,
+      "--dur": `${between(rand, cfg.dur[0], cfg.dur[1]).toFixed(1)}s`,
+      // Negative delay -> particles are mid-flight on first paint, not all stacked at the top.
+      "--delay": `${(-between(rand, 0, cfg.dur[1])).toFixed(1)}s`,
+      "--peak": between(rand, 0.55, 1).toFixed(2),
+      "--rot-mid": cfg.rotate
+        ? `${between(rand, -220, 220).toFixed(0)}deg`
+        : "0deg",
+      "--rot-end": cfg.rotate
+        ? `${between(rand, -360, 360).toFixed(0)}deg`
+        : "0deg",
+    };
 
-    const cfg = CONFIG[paletteKey];
-    if (!cfg) return; // unknown palette → render nothing
-
-    const fragment = document.createDocumentFragment();
-    // useEffect only runs on the client; window is always defined here.
-    const driftPx = window.innerWidth + 80;
-
-    for (let i = 0; i < cfg.count; i++) {
-      const s = document.createElement("span");
-      const style = s.style;
-
-      style.setProperty("--sz", rand(cfg.size[0], cfg.size[1]).toFixed(1) + "px");
-      style.setProperty("--x", rand(-2, 100).toFixed(1) + "%");
-      style.setProperty("--sway", rand(-cfg.swayMax, cfg.swayMax).toFixed(0) + "px");
-      style.setProperty("--dur", rand(cfg.dur[0], cfg.dur[1]).toFixed(1) + "s");
-      // Negative delay → particles are mid-flight on first paint, not all stacked at the top.
-      style.setProperty("--delay", (-rand(0, cfg.dur[1])).toFixed(1) + "s");
-      style.setProperty("--peak", rand(0.55, 1).toFixed(2));
-
-      if (cfg.rotate) {
-        style.setProperty("--rot-mid", rand(-220, 220).toFixed(0) + "deg");
-        style.setProperty("--rot-end", rand(-360, 360).toFixed(0) + "deg");
-      } else {
-        style.setProperty("--rot-mid", "0deg");
-        style.setProperty("--rot-end", "0deg");
-      }
-
-      if (cfg.mode === "firefly") {
-        style.setProperty("--y", rand(15, 80).toFixed(0) + "%");
-      }
-      if (cfg.mode === "rise") {
-        // Rise mode randomizes x more conservatively (no negative bleed).
-        style.setProperty("--x", rand(0, 95).toFixed(1) + "%");
-      }
-      if (cfg.mode === "swim") {
-        style.setProperty("--y", rand(20, 80).toFixed(0) + "%");
-        style.setProperty("--drift", driftPx.toFixed(0) + "px");
-        style.setProperty("--bob", rand(-10, 10).toFixed(0) + "px");
-      }
-
-      fragment.appendChild(s);
+    if (cfg.mode === "firefly") {
+      style["--y"] = `${between(rand, 15, 80).toFixed(0)}%`;
     }
-    layer.appendChild(fragment);
-  }, [paletteKey]);
+    if (cfg.mode === "rise") {
+      // Rise mode randomizes x more conservatively (no negative bleed).
+      style["--x"] = `${between(rand, 0, 95).toFixed(1)}%`;
+    }
+    if (cfg.mode === "swim") {
+      style["--y"] = `${between(rand, 20, 80).toFixed(0)}%`;
+      style["--drift"] = "calc(100vw + 80px)";
+      style["--bob"] = `${between(rand, -10, 10).toFixed(0)}px`;
+    }
 
-  return <div ref={ref} className="hako-particles" aria-hidden="true" />;
+    const particleKey = [
+      paletteKey,
+      style["--x"],
+      style["--y"] ?? "",
+      style["--delay"],
+      style["--sway"],
+    ].join(":");
+
+    return <span key={particleKey} style={style} />;
+  });
+
+  return (
+    <div className="hako-particles" aria-hidden="true">
+      {particles}
+    </div>
+  );
 }

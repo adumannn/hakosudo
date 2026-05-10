@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasSupabaseAuthCookie } from "@/lib/supabase/auth-cookie";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next({ request: req });
@@ -10,6 +11,7 @@ export async function middleware(req: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return res;
+  if (!hasSupabaseAuthCookie(req.cookies.getAll())) return res;
 
   try {
     const sb = createServerClient(url, key, {
