@@ -18,6 +18,7 @@ interface Props {
   puzzle: { id?: string; givens: string; solution: string };
   dailyDate?: string;
   dailyNumber?: number;
+  dailyKanji?: { kanji: string; romaji: string; meaning: string } | null;
   sfxEnabled?: boolean;
   signedIn?: boolean;
 }
@@ -34,6 +35,7 @@ export function GameShell({
   puzzle,
   dailyDate,
   dailyNumber,
+  dailyKanji = null,
   sfxEnabled = false,
   signedIn = false,
 }: Props) {
@@ -343,7 +345,7 @@ export function GameShell({
         </div>
       )}
 
-      <WinModal signedIn={signedIn} />
+      <WinModal signedIn={signedIn} dailyKanji={dailyKanji} />
     </>
   );
 }

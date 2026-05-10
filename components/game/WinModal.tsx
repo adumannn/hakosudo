@@ -16,9 +16,10 @@ import type { SealEntry, YearSeries } from "@/lib/seal/types";
 
 interface WinModalProps {
   signedIn?: boolean;
+  dailyKanji?: { kanji: string; romaji: string; meaning: string } | null;
 }
 
-export function WinModal({ signedIn = false }: WinModalProps) {
+export function WinModal({ signedIn = false, dailyKanji = null }: WinModalProps) {
   const isComplete = useGame((s) => s.isComplete);
   const elapsed = useGame((s) => s.elapsed);
   const errorsMade = useGame((s) => s.errorsMade);
@@ -171,6 +172,16 @@ export function WinModal({ signedIn = false }: WinModalProps) {
               ? `Daily${dailyNumber != null ? ` № ${dailyNumber.toString().padStart(4, "0")}` : ""} · ${dailyDate}`
               : `${difficulty ?? "casual"} box closed.`}
           </p>
+
+          {dailyDate && dailyKanji && (
+            <div className="mt-5">
+              <div className="eyebrow">earned today</div>
+              <div className="kdate-jp text-[48px] leading-none mt-2">{dailyKanji.kanji}</div>
+              <div className="ital text-moss text-[14px] mt-2">
+                {dailyKanji.romaji} · {dailyKanji.meaning}
+              </div>
+            </div>
+          )}
 
           <div className={cn("solve-details", showDetails && "solve-details-visible")}>
             <div className="grid grid-cols-3 gap-2 py-6 mt-4 border-t border-b border-sumi">
