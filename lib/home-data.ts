@@ -18,15 +18,13 @@ export interface TodaySealBundle {
   sealKanji: string;
 }
 
+const EMPTY_SEAL_BUNDLE: TodaySealBundle = { cal: null, line: null, sealKanji: "完" };
+
 async function fetchTodaySealBundleUncached(date: string): Promise<TodaySealBundle> {
   const sb = createPublicClient();
-  if (!sb) return { cal: null, line: null, sealKanji: "完" };
+  if (!sb) return EMPTY_SEAL_BUNDLE;
 
-  const [
-    { data: cal },
-    { data: line },
-    { data: puzzle },
-  ] = await Promise.all([
+  const [calRes, lineRes, puzzleRes] = await Promise.all([
     sb
       .from("daily_seal_calendar")
       .select("date,kanji,romaji,meaning")
@@ -43,40 +41,54 @@ async function fetchTodaySealBundleUncached(date: string): Promise<TodaySealBund
       .eq("date", date)
       .maybeSingle(),
   ]);
+  if (calRes.error) throw calRes.error;
+  if (lineRes.error) throw lineRes.error;
+  if (puzzleRes.error) throw puzzleRes.error;
 
   const sealKanji =
-    (puzzle?.skins as unknown as { seal_kanji: string } | null)?.seal_kanji ?? "完";
+    (puzzleRes.data?.skins as unknown as { seal_kanji: string } | null)?.seal_kanji ?? "完";
   return {
-    cal: (cal as TodaySealRow | null) ?? null,
-    line: (line as { line: string | null } | null)?.line ?? null,
+    cal: (calRes.data as TodaySealRow | null) ?? null,
+    line: (lineRes.data as { line: string | null } | null)?.line ?? null,
     sealKanji,
   };
 }
 
-export function getTodaySealBundle(date: string): Promise<TodaySealBundle> {
-  return unstable_cache(
-    () => fetchTodaySealBundleUncached(date),
-    ["home:today-seal-bundle", date],
-    { revalidate: 3600, tags: ["daily-seal", `daily-seal:${date}`] },
-  )();
+export async function getTodaySealBundle(date: string): Promise<TodaySealBundle> {
+  try {
+    return await unstable_cache(
+      () => fetchTodaySealBundleUncached(date),
+      ["home:today-seal-bundle", date],
+      { revalidate: 3600, tags: ["daily-seal", `daily-seal:${date}`] },
+    )();
+  } catch (err) {
+    console.error("[home-data] getTodaySealBundle failed:", err);
+    return EMPTY_SEAL_BUNDLE;
+  }
 }
 
 // Daily seq lookup — by date, fully static for the day.
-export function getDailySeq(date: string): Promise<number | null> {
-  return unstable_cache(
-    async (): Promise<number | null> => {
-      const sb = createPublicClient();
-      if (!sb) return null;
-      const { data } = await sb
-        .from("daily_puzzles")
-        .select("seq")
-        .eq("date", date)
-        .maybeSingle();
-      return (data as { seq: number } | null)?.seq ?? null;
-    },
-    ["home:daily-seq", date],
-    { revalidate: 86400, tags: ["daily-puzzles", `daily-puzzles:${date}`] },
-  )();
+export async function getDailySeq(date: string): Promise<number | null> {
+  try {
+    return await unstable_cache(
+      async (): Promise<number | null> => {
+        const sb = createPublicClient();
+        if (!sb) return null;
+        const { data, error } = await sb
+          .from("daily_puzzles")
+          .select("seq")
+          .eq("date", date)
+          .maybeSingle();
+        if (error) throw error;
+        return (data as { seq: number } | null)?.seq ?? null;
+      },
+      ["home:daily-seq", date],
+      { revalidate: 86400, tags: ["daily-puzzles", `daily-puzzles:${date}`] },
+    )();
+  } catch (err) {
+    console.error("[home-data] getDailySeq failed:", err);
+    return null;
+  }
 }
 
 export interface SnapshotRow {
@@ -156,11 +168,20 @@ export function getActiveGamesCount(): Promise<number> {
 }
 
 // Convenience wrapper preserving the previous shape, fanning the two caches
-// out in parallel. Callers can also use the underlying functions directly.
+// out in parallel. Each helper throws on a real Supabase error so a transient
+// blip doesn't poison the 30s cache with [] / 0 — we catch here and degrade
+// gracefully rather than 500 the whole homepage. unstable_cache doesn't
+// memoize the thrown error, so the next request retries.
 export async function getPublicDailySnapshot(date: string): Promise<DailySnapshotRaw> {
   const [rows, activeGames] = await Promise.all([
-    getPublicDailyResults(date),
-    getActiveGamesCount(),
+    getPublicDailyResults(date).catch((err) => {
+      console.error("[home-data] getPublicDailyResults failed:", err);
+      return [] as SnapshotRow[];
+    }),
+    getActiveGamesCount().catch((err) => {
+      console.error("[home-data] getActiveGamesCount failed:", err);
+      return 0;
+    }),
   ]);
   return { rows, activeGames };
 }

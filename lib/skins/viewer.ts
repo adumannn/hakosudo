@@ -25,7 +25,7 @@ const EMPTY_VIEWER: Viewer = {
 // Skins are essentially static config (~10 rows, edited rarely). Cross-request
 // cache keeps SSR off the auth-shared Supabase pool for this read. The inner
 // fetch must not touch cookies(), so we use the cookieless anon client.
-const fetchAllSkins = unstable_cache(
+const fetchAllSkinsCached = unstable_cache(
   async (): Promise<SkinRecord[]> => {
     const sb = createPublicClient();
     if (!sb) return [];
@@ -35,12 +35,25 @@ const fetchAllSkins = unstable_cache(
         "id,slug,kind,name,kanji_label,seal_kanji,palette_key,masthead,start_date,end_date,price_cents,active",
       )
       .eq("active", true);
-    if (error) console.error("[skins/viewer] skins.select:", error);
+    if (error) throw error;
     return (data ?? []) as unknown as SkinRecord[];
   },
   ["skins:active:v1"],
   { revalidate: 3600, tags: ["skins"] },
 );
+
+// Wrapper so a Supabase blip on the skins read can't 500 the layout (which
+// renders on every page). The cache won't memoize the throw, so the next
+// request retries; in the meantime callers get an empty list and degrade
+// gracefully.
+async function fetchAllSkins(): Promise<SkinRecord[]> {
+  try {
+    return await fetchAllSkinsCached();
+  } catch (err) {
+    console.error("[skins/viewer] skins.select failed:", err);
+    return [];
+  }
+}
 
 // React cache() dedupes within a single request: layout, /skins page, and
 // <SkinChip /> all call getViewer(); without this, each call re-queries
