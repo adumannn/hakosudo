@@ -1,0 +1,1 @@
+export const PREMIUM_SKIN_PRICE_CENTS = 100;

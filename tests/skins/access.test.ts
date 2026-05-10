@@ -7,7 +7,7 @@ const PREMIUM: SkinRecord = {
   id: "s-sumi", slug: "sumi-e", kind: "premium", name: "Sumi-e",
   kanji_label: "墨", seal_kanji: "墨", palette_key: "sumi",
   masthead: "Today's stroke.", start_date: null, end_date: null,
-  price_cents: 300, active: true,
+  price_cents: 100, active: true,
 };
 const SEASON: SkinRecord = {
   id: "s-spring", slug: "spring-2026", kind: "season", name: "Spring 2026",

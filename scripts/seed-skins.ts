@@ -2,6 +2,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import { createAdminClient } from "../lib/supabase/admin";
+import { PREMIUM_SKIN_PRICE_CENTS } from "../lib/skins/prices";
 
 interface SeedSkin {
   slug: string;
@@ -54,13 +55,13 @@ const LAUNCH_SKINS: SeedSkin[] = [
     slug: "sumi-e", kind: "premium", name: "Sumi-e",
     kanji_label: "墨", seal_kanji: "墨", palette_key: "sumi",
     masthead: "Today's stroke.",
-    start_date: null, end_date: null, price_cents: 300,
+    start_date: null, end_date: null, price_cents: PREMIUM_SKIN_PRICE_CENTS,
   },
   {
     slug: "indigo", kind: "premium", name: "Indigo",
     kanji_label: "藍", seal_kanji: "藍", palette_key: "indigo",
     masthead: "Today's depth.",
-    start_date: null, end_date: null, price_cents: 300,
+    start_date: null, end_date: null, price_cents: PREMIUM_SKIN_PRICE_CENTS,
   },
   // Challenge-unlock skins (kind: "limited"). Free, but require a
   // user_skin_entitlements row with source="challenge". Auto-grant logic on
