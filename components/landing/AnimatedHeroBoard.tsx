@@ -125,6 +125,9 @@ export function AnimatedHeroBoard({ seqLabel }: AnimatedHeroBoardProps): JSX.Ele
   const [placedCount, setPlacedCount] = useState(0);
   const [sealVisible, setSealVisible] = useState(false);
   const timeoutsRef = useRef<number[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cycleStateRef = useRef<"idle" | "playing" | "rest">("idle");
+  const armReplayRef = useRef(false);
 
   const clearTimers = useCallback(() => {
     for (const id of timeoutsRef.current) {
@@ -135,6 +138,8 @@ export function AnimatedHeroBoard({ seqLabel }: AnimatedHeroBoardProps): JSX.Ele
 
   const play = useCallback(() => {
     clearTimers();
+    cycleStateRef.current = "playing";
+    armReplayRef.current = false;
     setPlacedCount(0);
     setSealVisible(false);
 
@@ -147,11 +152,48 @@ export function AnimatedHeroBoard({ seqLabel }: AnimatedHeroBoardProps): JSX.Ele
       FILL_TOTAL_MS + SEAL_DELAY_MS,
     );
     timeoutsRef.current.push(sealId);
+    const doneId = window.setTimeout(() => {
+      cycleStateRef.current = "rest";
+    }, CYCLE_TOTAL_MS);
+    timeoutsRef.current.push(doneId);
   }, [clearTimers]);
 
   useEffect(() => {
-    play();
-    return clearTimers;
+    if (typeof window === "undefined") return;
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      setPlacedCount(FILL_QUEUE.length);
+      setSealVisible(true);
+      cycleStateRef.current = "rest";
+      return;
+    }
+
+    const el = containerRef.current;
+    if (!el) return clearTimers;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (cycleStateRef.current === "idle") {
+              play();
+            } else if (cycleStateRef.current === "rest" && armReplayRef.current) {
+              play();
+            }
+          } else if (cycleStateRef.current === "rest") {
+            armReplayRef.current = true;
+          }
+        }
+      },
+      { threshold: 0.3 },
+    );
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      clearTimers();
+    };
   }, [play, clearTimers]);
 
   const placed = GIVENS_COUNT + START_PLACED_COUNT + placedCount;
@@ -193,6 +235,7 @@ export function AnimatedHeroBoard({ seqLabel }: AnimatedHeroBoardProps): JSX.Ele
 
   return (
     <div
+      ref={containerRef}
       className="relative px-8 pt-14 pb-12 lg:p-16 bg-rice flex flex-col justify-center overflow-hidden"
       aria-hidden="true"
     >
