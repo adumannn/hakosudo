@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findHint, candidates, findLockedCandidate } from "@/lib/sudoku/techniques";
+import { findHint, candidates, findLockedCandidate, findNakedPair } from "@/lib/sudoku/techniques";
 
 const parse = (s: string) => s.split("").map((c) => (c === "." ? 0 : +c));
 
@@ -46,5 +46,27 @@ describe("findLockedCandidate", () => {
   it("returns null when no locked candidate applies", () => {
     const b = parse(".".repeat(81));
     expect(findLockedCandidate(b)).toBeNull();
+  });
+});
+
+describe("findNakedPair", () => {
+  it("detects two cells in a unit sharing the same two candidates", () => {
+    // Row 0: cells (0,0) and (0,1) empty, (0,2)..(0,8) = 3,4,5,6,7,8,9.
+    // Both (0,0) and (0,1) have candidates {1,2} → naked pair in row 0.
+    // The pair must eliminate at least one candidate elsewhere in some unit
+    // it shares — column 0 and box 0 still have other empty cells whose
+    // candidates include 1 or 2, so the constraint is non-vacuous.
+    const b = Array(81).fill(0);
+    for (let c = 2; c <= 8; c++) b[c] = c + 1; // row 0, cols 2..8 = 3..9
+    const hint = findNakedPair(b);
+    expect(hint).not.toBeNull();
+    expect(hint!.technique).toBe("naked-pair");
+    expect(hint!.value).toBeNull();
+    expect(hint!.unit).toMatch(/row 1/);
+    expect(hint!.cells.sort()).toEqual([0, 1]);
+  });
+
+  it("returns null when no naked pair exists", () => {
+    expect(findNakedPair(Array(81).fill(0))).toBeNull();
   });
 });

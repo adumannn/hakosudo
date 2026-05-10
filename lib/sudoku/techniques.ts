@@ -147,3 +147,36 @@ const unitKind = (u: number[]) => {
   if (c0 === c1) return `column ${c0 + 1}`;
   return `box`;
 };
+
+export function findNakedPair(b: Board): Hint | null {
+  for (const unit of allUnits) {
+    const empties = unit.filter((i) => !b[i]);
+    const pairs: { i: number; cs: number[] }[] = empties
+      .map((i) => ({ i, cs: candidates(b, i) }))
+      .filter((x) => x.cs.length === 2);
+    for (let a = 0; a < pairs.length; a++) {
+      for (let bIdx = a + 1; bIdx < pairs.length; bIdx++) {
+        const A = pairs[a],
+          B = pairs[bIdx];
+        if (A.cs[0] !== B.cs[0] || A.cs[1] !== B.cs[1]) continue;
+        // Confirm the pair actually eliminates a candidate elsewhere in the unit.
+        const eliminates = empties.some(
+          (i) =>
+            i !== A.i &&
+            i !== B.i &&
+            candidates(b, i).some((d) => d === A.cs[0] || d === A.cs[1]),
+        );
+        if (!eliminates) continue;
+        return {
+          index: A.i,
+          value: null,
+          technique: "naked-pair",
+          unit: unitKind(unit),
+          cells: [A.i, B.i],
+          reason: `In this ${unitKind(unit)}, ${cellName(A.i)} and ${cellName(B.i)} must be ${A.cs[0]} and ${A.cs[1]} in some order — so ${A.cs[0]} and ${A.cs[1]} are eliminated from the other cells in the ${unitKind(unit)}.`,
+        };
+      }
+    }
+  }
+  return null;
+}
