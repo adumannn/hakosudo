@@ -36,6 +36,17 @@ export default async function Profile() {
   const displayName = username.charAt(0).toUpperCase() + username.slice(1);
   const headlineSize = displayName.length > 14 ? 28 : displayName.length > 10 ? 34 : 42;
   const cityLabel = (profile?.city ?? "—").trim() || "—";
+  const today = new Date().toISOString().slice(0, 10);
+  const daysOnHako = profile?.created_at
+    ? Math.max(
+        0,
+        Math.floor(
+          (new Date(today + "T00:00:00Z").getTime() -
+            new Date(profile.created_at).getTime()) /
+            86_400_000,
+        ),
+      )
+    : 0;
   const userCreatedAt = profile?.created_at ?? null;
 
   return (
@@ -72,6 +83,7 @@ export default async function Profile() {
                 <span className="truncate max-w-[200px]" title={`@${username}`}>
                   @{username}
                 </span>
+                {daysOnHako > 0 && <span>· {daysOnHako}日 on Hako</span>}
                 <UsernamePicker current={username} />
               </div>
               <p className="mt-[18px] ital text-[17px] text-moss leading-snug max-w-[30ch]">
