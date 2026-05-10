@@ -28,7 +28,7 @@ export function Seal({ kanji, state, size = "sm", onClick, ariaLabel }: SealProp
   const base =
     "relative aspect-square flex items-center justify-center leading-none mincho select-none";
   const stateClass = {
-    filled: "bg-sumi/[0.03] border border-sumi/[0.32] text-sumi",
+    filled: "border border-sumi/[0.16] text-sumi",
     today:
       "bg-vermillion/[0.04] border-[1.5px] border-vermillion/70 text-vermillion/45 motion-safe:animate-[seal-pulse_1.8s_ease-in-out_infinite]",
     empty: "border border-dashed border-sumi/[0.16]",
