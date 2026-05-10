@@ -43,7 +43,7 @@ export function SfxToggle({ initialEnabled }: SfxToggleProps) {
   return (
     <div className="border-t border-sumi/18 pt-6">
       <div className="flex items-center justify-between gap-6">
-        <div>
+        <div className="min-w-0">
           <div
             id="sfx-toggle-label"
             className="mono text-[10.5px] tracking-[0.22em] uppercase text-moss"
@@ -62,14 +62,14 @@ export function SfxToggle({ initialEnabled }: SfxToggleProps) {
           disabled={pending}
           onClick={() => update(!enabled)}
           className={cn(
-            "relative h-8 w-14 border-[1.5px] border-sumi transition-colors disabled:opacity-60",
+            "relative h-8 w-14 shrink-0 border-[1.5px] border-sumi transition-colors disabled:opacity-60",
             enabled ? "bg-vermillion" : "bg-rice",
           )}
         >
           <span
             className={cn(
-              "absolute top-1/2 h-5 w-5 -translate-y-1/2 bg-sumi transition-transform",
-              enabled ? "translate-x-[26px] bg-bone" : "translate-x-1",
+              "absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 bg-sumi transition-transform",
+              enabled ? "translate-x-7 bg-bone" : "translate-x-0",
             )}
           />
         </button>
