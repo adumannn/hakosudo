@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findHint, candidates, findLockedCandidate, findNakedPair } from "@/lib/sudoku/techniques";
+import { findHint, candidates, findLockedCandidate, findNakedPair, findHintForCell } from "@/lib/sudoku/techniques";
 
 const parse = (s: string) => s.split("").map((c) => (c === "." ? 0 : +c));
 
@@ -68,5 +68,40 @@ describe("findNakedPair", () => {
 
   it("returns null when no naked pair exists", () => {
     expect(findNakedPair(Array(81).fill(0))).toBeNull();
+  });
+});
+
+describe("findHintForCell", () => {
+  it("returns a free-tier naked-single hint when target has one candidate", () => {
+    // Cell (0,0) target. Column 0 rows 1-8 = 2..9. Only 1 fits at (0,0).
+    const b = Array(81).fill(0);
+    for (let r = 1; r <= 8; r++) b[r * 9] = r + 1;
+    const result = findHintForCell(b, 0, { proTechniques: false });
+    expect(result).not.toBeNull();
+    expect("hint" in result!).toBe(true);
+    if ("hint" in result!) {
+      expect(result.hint.technique).toBe("naked-single");
+      expect(result.hint.index).toBe(0);
+      expect(result.hint.value).toBe(1);
+      expect(result.tier).toBe("free");
+    }
+  });
+
+  it("returns a redirect hint when target has no available technique but board does", () => {
+    // Target = (4,4) with broad candidates. Cell (0,0) is a clean naked single.
+    const b = Array(81).fill(0);
+    for (let r = 1; r <= 8; r++) b[r * 9] = r + 1;
+    const result = findHintForCell(b, 40 /* (4,4) — broad candidates */, { proTechniques: false });
+    expect(result).not.toBeNull();
+    expect("hint" in result!).toBe(true);
+    if ("hint" in result!) {
+      expect(result.hint.redirect).toBe(true);
+      expect(result.hint.index).toBe(0); // the naked-single we set up
+    }
+  });
+
+  it("returns null when board has no available hints", () => {
+    const solved = parse("534678912672195348198342567859761423426853791713924856961537284287419635345286179");
+    expect(findHintForCell(solved, 0, { proTechniques: false })).toBeNull();
   });
 });

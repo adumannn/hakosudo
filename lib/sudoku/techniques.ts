@@ -148,6 +148,106 @@ const unitKind = (u: number[]) => {
   return `box`;
 };
 
+export type HintResult =
+  | { hint: Hint; tier: "free" | "pro" }
+  | { downgrade: true; redirect: Hint | null };
+
+/** Find a hint relevant to `target`. Order: naked single → hidden single
+ * (free) → locked candidate → naked pair (pro). If none apply at target,
+ * fall back to any hint elsewhere on the board (returned with redirect:true).
+ * Pro-tier hints for free users return a downgrade payload with an optional
+ * singles-tier redirect. */
+export function findHintForCell(
+  b: Board,
+  target: number,
+  opts: { proTechniques: boolean },
+): HintResult | null {
+  // 1. Naked single AT target
+  if (!b[target]) {
+    const cs = candidates(b, target);
+    if (cs.length === 1) {
+      return {
+        hint: {
+          index: target,
+          value: cs[0],
+          technique: "naked-single",
+          unit: `cell ${cellName(target)}`,
+          cells: [],
+          reason: `Cell ${cellName(target)} has only one possible digit (${cs[0]}).`,
+        },
+        tier: "free",
+      };
+    }
+  }
+
+  // 2. Hidden single in any unit containing target, where target is the resolver
+  const [tr, tc] = rc(target);
+  const tbox = Math.floor(tr / BOX) * BOX + Math.floor(tc / BOX);
+  const unitsAtTarget = allUnits.filter((u) => u.includes(target));
+  for (const unit of unitsAtTarget) {
+    for (let v = 1; v <= 9; v++) {
+      if (unit.some((i) => b[i] === v)) continue;
+      const cands = unit.filter((i) => !b[i] && candidates(b, i).includes(v));
+      if (cands.length === 1 && cands[0] === target) {
+        return {
+          hint: {
+            index: target,
+            value: v,
+            technique: "hidden-single",
+            unit: unitKind(unit),
+            cells: unit.filter((j) => !b[j] && j !== target),
+            reason: `In this ${unitKind(unit)}, only ${cellName(target)} can hold ${v}.`,
+          },
+          tier: "free",
+        };
+      }
+    }
+  }
+
+  // 3. Pro-tier techniques touching target
+  const proHint = findProHintTouching(b, target, tr, tc, tbox);
+  if (proHint) {
+    if (opts.proTechniques) return { hint: proHint, tier: "pro" };
+    // Downgrade for free user
+    const redirect = findHint(b);
+    if (redirect) redirect.redirect = true;
+    return { downgrade: true, redirect };
+  }
+
+  // 4. Fallback redirect (any singles-tier hint elsewhere)
+  const fallback = findHint(b);
+  if (fallback) {
+    fallback.redirect = true;
+    return { hint: fallback, tier: "free" };
+  }
+  return null;
+}
+
+function findProHintTouching(
+  b: Board,
+  target: number,
+  tr: number,
+  tc: number,
+  tbox: number,
+): Hint | null {
+  // Locked candidate touching target box
+  const lc = findLockedCandidate(b);
+  if (lc) {
+    const lcBox = Math.floor(rc(lc.index)[0] / BOX) * BOX + Math.floor(rc(lc.index)[1] / BOX);
+    if (lcBox === tbox) return lc;
+  }
+  // Naked pair touching target unit
+  const np = findNakedPair(b);
+  if (np) {
+    const sameRow = rc(np.index)[0] === tr;
+    const sameCol = rc(np.index)[1] === tc;
+    const sameBox =
+      Math.floor(rc(np.index)[0] / BOX) * BOX + Math.floor(rc(np.index)[1] / BOX) === tbox;
+    if (sameRow || sameCol || sameBox) return np;
+  }
+  return null;
+}
+
 export function findNakedPair(b: Board): Hint | null {
   for (const unit of allUnits) {
     const empties = unit.filter((i) => !b[i]);
