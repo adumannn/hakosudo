@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { VermillionStamp } from "./VermillionStamp";
+import { AnimatedHeroBoard } from "./AnimatedHeroBoard";
 
 interface LandingProps {
   dateLabelJp: string;
@@ -9,25 +10,6 @@ interface LandingProps {
   firstSolveTime: string | null;
   cityCount: { city: string; count: number } | null;
 }
-
-const HERO_BOARD: ReadonlyArray<ReadonlyArray<number | null>> = [
-  [5, null, null, 6, null, 2, null, null, 8],
-  [null, null, 1, null, 5, null, 9, null, null],
-  [null, 9, null, null, null, null, 3, null, 6],
-  [3, null, null, 7, null, 6, null, null, 5],
-  [4, null, null, 2, null, 9, null, null, 1],
-  [9, null, null, 5, null, 3, null, null, 2],
-  [6, null, 7, null, null, null, 4, null, 9],
-  [null, null, 2, null, 9, null, 8, null, null],
-  [8, null, null, 3, null, 7, null, null, null],
-];
-
-const HERO_PLAYER: ReadonlySet<string> = new Set([
-  "0,1", "0,4", "1,3", "1,7", "2,1", "2,7",
-  "3,1", "3,7", "4,1", "4,7", "5,1", "5,7",
-  "6,3", "7,3", "7,7", "8,1", "8,7",
-]);
-
 
 function LockedStamp({
   glyph,
@@ -46,28 +28,6 @@ function LockedStamp({
       <span className="opacity-[0.22]">{glyph}</span>
     </div>
   );
-}
-
-function HeroBoard() {
-  const cells = [];
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const v = HERO_BOARD[r][c];
-      const isPlayer = HERO_PLAYER.has(`${r},${c}`);
-      const cls =
-        v === null
-          ? "hako-cell text-transparent"
-          : isPlayer
-            ? "hako-cell player"
-            : "hako-cell given";
-      cells.push(
-        <div key={`${r}-${c}`} className={cls} style={{ cursor: "default" }}>
-          {v ?? "·"}
-        </div>,
-      );
-    }
-  }
-  return <div className="hako-board">{cells}</div>;
 }
 
 export function Landing({
@@ -202,41 +162,7 @@ export function Landing({
           </div>
         </div>
 
-        <div className="relative px-8 pt-14 pb-12 lg:p-16 bg-rice flex flex-col justify-center overflow-hidden">
-          <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
-            <span className="mono text-[9.5px] tracking-[0.22em] uppercase text-moss">
-              — preview · today&rsquo;s grid, mid-solve
-            </span>
-            <span className="mono text-[9.5px] tracking-[0.22em] uppercase text-moss">
-              № {seqLabel}
-            </span>
-          </div>
-
-          <div className="absolute top-[18px] right-[18px]">
-            <VermillionStamp glyph="日" size={64} fontSize={34} rotate={8} />
-          </div>
-
-          <div className="mt-9 mx-auto w-full max-w-[440px]">
-            <HeroBoard />
-          </div>
-
-          <div className="mt-6 text-center max-w-[440px] self-center ital text-[15px] text-moss leading-snug">
-            — sumi numerals are <em className="text-vermillion-deep">given</em>;
-            vermillion are <em className="text-vermillion-deep">yours</em>. The
-            grid is the brand.
-          </div>
-
-          <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end mono text-[9.5px] tracking-[0.18em] uppercase text-moss">
-            <div>
-              seed <strong className="text-sumi font-medium">7b3c</strong> ·{" "}
-              <strong className="text-sumi font-medium">21</strong> placed
-            </div>
-            <div>
-              conflicts <strong className="text-sumi font-medium">0</strong> ·{" "}
-              <strong className="text-sumi font-medium">60</strong> to go
-            </div>
-          </div>
-        </div>
+        <AnimatedHeroBoard seqLabel={seqLabel} />
       </section>
 
       {/* ──────────── PRINCIPLES ──────────── */}
