@@ -92,32 +92,21 @@ export interface DailySnapshotRaw {
   activeGames: number;
 }
 
-// Public snapshot — what the marketing landing & home need. Cached briefly so
-// "solving now" stays roughly fresh without crushing the DB on every visit.
-export function getPublicDailySnapshot(date: string): Promise<DailySnapshotRaw> {
+// Date-scoped daily results for the snapshot. Cached briefly so the leaderboard
+// preview / first-solve / median don't requery on every visit. activeGames is
+// intentionally NOT bundled here — it's a global "right now" count that spans
+// daily + casual play and shouldn't fork its cache by date (see below).
+export function getPublicDailyResults(date: string): Promise<SnapshotRow[]> {
   return unstable_cache(
-    async (): Promise<DailySnapshotRaw> => {
+    async (): Promise<SnapshotRow[]> => {
       const sb = createPublicClient();
-      if (!sb) return { rows: [], activeGames: 0 };
-
-      const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-      const [
-        { data: snapshotRows },
-        { count: activeGames },
-      ] = await Promise.all([
-        sb
-          .from("daily_results")
-          .select("user_id,elapsed_seconds,city,created_at,profiles(username)")
-          .eq("date", date)
-          .order("elapsed_seconds", { ascending: true })
-          .order("created_at", { ascending: true }),
-        sb
-          .from("games")
-          .select("*", { count: "exact", head: true })
-          .eq("is_complete", false)
-          .gte("updated_at", fifteenMinAgo),
-      ]);
-
+      if (!sb) return [];
+      const { data } = await sb
+        .from("daily_results")
+        .select("user_id,elapsed_seconds,city,created_at,profiles(username)")
+        .eq("date", date)
+        .order("elapsed_seconds", { ascending: true })
+        .order("created_at", { ascending: true });
       type RawRow = {
         user_id: string;
         elapsed_seconds: number;
@@ -125,16 +114,46 @@ export function getPublicDailySnapshot(date: string): Promise<DailySnapshotRaw> 
         created_at: string;
         profiles: { username: string | null } | null;
       };
-      const rows = ((snapshotRows ?? []) as unknown as RawRow[]).map((r) => ({
+      return ((data ?? []) as unknown as RawRow[]).map((r) => ({
         user_id: r.user_id,
         username: r.profiles?.username ?? "anon",
         elapsed_seconds: r.elapsed_seconds,
         city: r.city,
         created_at: r.created_at,
       }));
-      return { rows, activeGames: activeGames ?? 0 };
     },
-    ["home:public-snapshot", date],
+    ["home:public-results", date],
     { revalidate: 30, tags: ["daily-snapshot", `daily-snapshot:${date}`] },
   )();
+}
+
+// "Solving now" — any in-progress game (daily or casual) updated in the last
+// 15 minutes. Date-independent on purpose: it's a global liveness counter, not
+// a per-day metric, so the cache key is also date-independent.
+export function getActiveGamesCount(): Promise<number> {
+  return unstable_cache(
+    async (): Promise<number> => {
+      const sb = createPublicClient();
+      if (!sb) return 0;
+      const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const { count } = await sb
+        .from("games")
+        .select("*", { count: "exact", head: true })
+        .eq("is_complete", false)
+        .gte("updated_at", fifteenMinAgo);
+      return count ?? 0;
+    },
+    ["home:active-games"],
+    { revalidate: 30, tags: ["active-games"] },
+  )();
+}
+
+// Convenience wrapper preserving the previous shape, fanning the two caches
+// out in parallel. Callers can also use the underlying functions directly.
+export async function getPublicDailySnapshot(date: string): Promise<DailySnapshotRaw> {
+  const [rows, activeGames] = await Promise.all([
+    getPublicDailyResults(date),
+    getActiveGamesCount(),
+  ]);
+  return { rows, activeGames };
 }
