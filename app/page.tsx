@@ -15,6 +15,12 @@ import { dateLine, weekdayJp } from "@/lib/kanji";
 import { computeDailySnapshot, computeCityCounts } from "@/lib/stats/leaderboard";
 import { getCity } from "@/lib/geo";
 import { resolveActiveSkinServer } from "@/lib/skins/server";
+import { getViewer } from "@/lib/skins/viewer";
+import {
+  getTodaySealBundle,
+  getDailySeq,
+  getPublicDailySnapshot,
+} from "@/lib/home-data";
 import type { YearSeries } from "@/lib/seal/types";
 import { computeTodayRank } from "@/lib/stats/rank";
 import { YouTodayPanel } from "@/components/stats/YouTodayPanel";
@@ -36,174 +42,45 @@ function landingDateLabels(d: Date = new Date()): { jp: string; en: string } {
 }
 
 export default async function Home() {
-  const skin = await resolveActiveSkinServer({ surface: "home" });
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  const user = session?.user;
-  const initial = user?.email?.[0] ?? "·";
   const today = todayUTC();
   const year = parseInt(today.slice(0, 4), 10);
 
-  // Today seal
-  const { data: todayCal } = await sb
-    .from("daily_seal_calendar")
-    .select("date,kanji,romaji,meaning")
-    .eq("date", today)
-    .maybeSingle();
-  const { data: todayLine } = await sb
-    .from("daily_seal_lines")
-    .select("line")
-    .eq("date", today)
-    .maybeSingle();
-  const { data: todayPuzzle } = await sb
-    .from("daily_puzzles")
-    .select("skins(seal_kanji)")
-    .eq("date", today)
-    .maybeSingle();
-  const todaySealKanji =
-    (todayPuzzle?.skins as unknown as { seal_kanji: string } | null)?.seal_kanji ?? "完";
-  const todaySeal = todayCal
+  // Fan out every viewer-independent fetch in parallel with the viewer.
+  // Viewer (request-deduped) covers both the skin resolution and identity
+  // check — no extra getSession()/getUser() round-trip.
+  const [viewer, sealBundle, snapshotRaw, dailySeq] = await Promise.all([
+    getViewer(),
+    getTodaySealBundle(today),
+    getPublicDailySnapshot(today),
+    getDailySeq(today),
+  ]);
+  const skin = await resolveActiveSkinServer({ surface: "home", viewer });
+  const user = viewer.userId ? { id: viewer.userId, email: viewer.email } : null;
+  const initial = user?.email?.[0] ?? "·";
+
+  const todaySeal = sealBundle.cal
     ? {
-        date: todayCal.date,
-        kanji: todayCal.kanji,
-        romaji: todayCal.romaji,
-        meaning: todayCal.meaning,
-        senseiLine: todayLine?.line ?? null,
-        sealKanji: todaySealKanji,
+        date: sealBundle.cal.date,
+        kanji: sealBundle.cal.kanji,
+        romaji: sealBundle.cal.romaji,
+        meaning: sealBundle.cal.meaning,
+        senseiLine: sealBundle.line,
+        sealKanji: sealBundle.sealKanji,
       }
     : null;
 
-  // Year series + streak (signed-in only)
-  let series: YearSeries | null = null;
-  let streak = 0;
-  let completedTodayElapsed: number | undefined;
-  let freezePrompt: { date: string; kanji: string; remaining: number } | null = null;
-  let profileCity: string | null = null;
-  if (user) {
-    const yearStart = `${year}-01-01`;
-    const yearEnd = `${year}-12-31`;
-    const [
-      { data: cal },
-      { data: results },
-      { data: freezes },
-      { data: profile },
-      { data: dailyMeta },
-    ] = await Promise.all([
-        sb
-          .from("daily_seal_calendar")
-          .select("date,kanji,romaji,meaning")
-          .gte("date", yearStart).lte("date", yearEnd)
-          .order("date", { ascending: true }),
-        sb.from("daily_results").select("date,elapsed_seconds")
-          .eq("user_id", user.id)
-          .gte("date", yearStart).lte("date", yearEnd),
-        sb.from("streak_freezes").select("date")
-          .eq("user_id", user.id)
-          .gte("date", yearStart).lte("date", yearEnd),
-        sb.from("profiles").select("created_at,is_pro,city").eq("id", user.id).maybeSingle(),
-        sb
-          .from("daily_puzzles")
-          .select("date, skin_id, skins(seal_kanji)")
-          .gte("date", yearStart).lte("date", yearEnd),
-      ]);
-    profileCity = profile?.city ?? null;
-    const completedByDate = new Map<string, number>();
-    for (const r of (results ?? []) as { date: string; elapsed_seconds: number }[]) {
-      completedByDate.set(r.date, r.elapsed_seconds);
-    }
-    const frozen = new Set<string>(((freezes ?? []) as { date: string }[]).map((f) => f.date));
-    type DailyMetaRow = { date: string; skin_id: string; skins: { seal_kanji: string } | null };
-    const sealKanjiByDate = new Map<string, string>();
-    for (const r of (dailyMeta ?? []) as unknown as DailyMetaRow[]) {
-      sealKanjiByDate.set(r.date, r.skins?.seal_kanji ?? "完");
-    }
-    const signupDate = profile?.created_at
-      ? new Date(profile.created_at).toISOString().slice(0, 10)
-      : yearStart;
-    series = assembleYearSeries({
-      today,
-      calendar: (cal ?? []) as unknown as Parameters<typeof assembleYearSeries>[0]["calendar"],
-      completedByDate,
-      frozenDates: frozen,
-      signupDate,
-      sealKanjiByDate,
-    });
-    streak = computeUnifiedStreak(today, new Set(completedByDate.keys()), frozen);
-    completedTodayElapsed = completedByDate.get(today);
-
-    if (profile?.is_pro) {
-      const yest = new Date(today + "T00:00:00Z");
-      yest.setUTCDate(yest.getUTCDate() - 1);
-      const yestStr = yest.toISOString().slice(0, 10);
-      const yestEntry = series.seals.find((s) => s.date === yestStr);
-      if (yestEntry?.state === "empty") {
-        const granted = `${yestStr.slice(0, 7)}-01`;
-        const { count } = await sb
-          .from("streak_freezes")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("granted_month", granted);
-        const used = count ?? 0;
-        const allotment = computeAllotment(profile.created_at, granted);
-        const remaining = Math.max(0, allotment - used);
-        if (remaining > 0) freezePrompt = { date: yestStr, kanji: yestEntry.kanji, remaining };
-      }
-    }
-  }
-
-  // Daily snapshot — used for "global pace · today" and ledger preview.
-  const [
-    { data: dailyPuzzle },
-    { data: snapshotRows },
-    { count: activeGames },
-  ] = await Promise.all([
-    sb.from("daily_puzzles").select("seq").eq("date", today).maybeSingle(),
-    sb
-      .from("daily_results")
-      .select("user_id,elapsed_seconds,city,created_at,profiles(username)")
-      .eq("date", today)
-      .order("elapsed_seconds", { ascending: true })
-      .order("created_at", { ascending: true }),
-    sb
-      .from("games")
-      .select("*", { count: "exact", head: true })
-      .eq("is_complete", false)
-      .gte("updated_at", new Date(Date.now() - 15 * 60 * 1000).toISOString()),
-  ]);
-
-  type Row = {
-    user_id: string;
-    elapsed_seconds: number;
-    city: string | null;
-    created_at: string;
-    profiles: { username: string | null } | null;
-  };
-  const rows = (snapshotRows ?? []) as unknown as Row[];
   const snapshot = computeDailySnapshot({
-    seq: dailyPuzzle?.seq ?? null,
-    results: rows.map((r) => ({
-      user_id: r.user_id,
-      username: r.profiles?.username ?? "anon",
-      elapsed_seconds: r.elapsed_seconds,
-      city: r.city,
-      created_at: r.created_at,
-    })),
-    activeGamesCount: activeGames ?? 0,
+    seq: dailySeq,
+    results: snapshotRaw.rows,
+    activeGamesCount: snapshotRaw.activeGames,
   });
-  const preview = rows.slice(0, 3).map((r, i) => ({
-    rank: (i + 1).toString().padStart(2, "0"),
-    name: r.profiles?.username ?? "anon",
-    time: formatTime(r.elapsed_seconds),
-    first: i === 0,
-  }));
 
   // ─── Signed-out: marketing landing ───
+  // Return early — none of the year/streak queries below are needed.
   if (!user) {
     const labels = landingDateLabels();
     const cityCounts = computeCityCounts({
-      rows: rows.map((r) => ({ city: r.city })),
+      rows: snapshotRaw.rows.map((r) => ({ city: r.city })),
       userCity: null,
     });
     const topCity = cityCounts[0] ?? null;
@@ -226,24 +103,109 @@ export default async function Home() {
     );
   }
 
+  const sb = createServerClient();
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
+
+  const preview = snapshotRaw.rows.slice(0, 3).map((r, i) => ({
+    rank: (i + 1).toString().padStart(2, "0"),
+    name: r.username,
+    time: formatTime(r.elapsed_seconds),
+    first: i === 0,
+  }));
+
+  // Year series + streak (signed-in only — guarded by the early return above).
+  let freezePrompt: { date: string; kanji: string; remaining: number } | null = null;
+  const [
+    { data: cal },
+    { data: results },
+    { data: freezes },
+    { data: profile },
+    { data: dailyMeta },
+  ] = await Promise.all([
+    sb
+      .from("daily_seal_calendar")
+      .select("date,kanji,romaji,meaning")
+      .gte("date", yearStart).lte("date", yearEnd)
+      .order("date", { ascending: true }),
+    sb.from("daily_results").select("date,elapsed_seconds")
+      .eq("user_id", user.id)
+      .gte("date", yearStart).lte("date", yearEnd),
+    sb.from("streak_freezes").select("date")
+      .eq("user_id", user.id)
+      .gte("date", yearStart).lte("date", yearEnd),
+    sb.from("profiles").select("created_at,is_pro,city").eq("id", user.id).maybeSingle(),
+    sb
+      .from("daily_puzzles")
+      .select("date, skin_id, skins(seal_kanji)")
+      .gte("date", yearStart).lte("date", yearEnd),
+  ]);
+  const profileCity: string | null = profile?.city ?? null;
+  const completedByDate = new Map<string, number>();
+  for (const r of (results ?? []) as { date: string; elapsed_seconds: number }[]) {
+    completedByDate.set(r.date, r.elapsed_seconds);
+  }
+  const frozen = new Set<string>(((freezes ?? []) as { date: string }[]).map((f) => f.date));
+  type DailyMetaRow = { date: string; skin_id: string; skins: { seal_kanji: string } | null };
+  const sealKanjiByDate = new Map<string, string>();
+  for (const r of (dailyMeta ?? []) as unknown as DailyMetaRow[]) {
+    sealKanjiByDate.set(r.date, r.skins?.seal_kanji ?? "完");
+  }
+  const signupDate = profile?.created_at
+    ? new Date(profile.created_at).toISOString().slice(0, 10)
+    : yearStart;
+  const series: YearSeries = assembleYearSeries({
+    today,
+    calendar: (cal ?? []) as unknown as Parameters<typeof assembleYearSeries>[0]["calendar"],
+    completedByDate,
+    frozenDates: frozen,
+    signupDate,
+    sealKanjiByDate,
+  });
+  const streak = computeUnifiedStreak(today, new Set(completedByDate.keys()), frozen);
+  const completedTodayElapsed = completedByDate.get(today);
+
+  if (profile?.is_pro) {
+    const yest = new Date(today + "T00:00:00Z");
+    yest.setUTCDate(yest.getUTCDate() - 1);
+    const yestStr = yest.toISOString().slice(0, 10);
+    const yestEntry = series.seals.find((s) => s.date === yestStr);
+    if (yestEntry?.state === "empty") {
+      const granted = `${yestStr.slice(0, 7)}-01`;
+      const { count } = await sb
+        .from("streak_freezes")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("granted_month", granted);
+      const used = count ?? 0;
+      const allotment = computeAllotment(profile.created_at, granted);
+      const remaining = Math.max(0, allotment - used);
+      if (remaining > 0) freezePrompt = { date: yestStr, kanji: yestEntry.kanji, remaining };
+    }
+  }
+
   // Popular city list for the home banner picker (signed-in only).
   let popularCities: { city: string; count: number }[] = [];
   let citySuggestion: string | null = null;
   if (profileCity === null) {
     popularCities = computeCityCounts({
-      rows: rows.map((r) => ({ city: r.city })),
+      rows: snapshotRaw.rows.map((r) => ({ city: r.city })),
       userCity: null,
     });
     citySuggestion = getCity();
   }
 
   const todayRank = computeTodayRank({
-    rows: rows.map((r) => ({ user_id: r.user_id, elapsed_seconds: r.elapsed_seconds })),
+    rows: snapshotRaw.rows.map((r) => ({
+      user_id: r.user_id,
+      elapsed_seconds: r.elapsed_seconds,
+    })),
     userId: user.id,
   });
-  const yearFilled =
-    series?.seals.filter((s) => s.state === "filled" || s.state === "freeze").length ?? 0;
-  const yearTotal = series?.seals.length ?? 0;
+  const yearFilled = series.seals.filter(
+    (s) => s.state === "filled" || s.state === "freeze",
+  ).length;
+  const yearTotal = series.seals.length;
 
   return (
     <>
@@ -325,19 +287,17 @@ export default async function Home() {
         </section>
 
         {/* ── Band 2 · Year ───────────────────────────────────────── */}
-        {series && (
-          <section className="mt-12">
-            <div className="flex justify-between items-baseline mb-3">
-              <div className="eyebrow">your year</div>
-              <div className="mono text-[11px] tracking-[0.14em] text-moss">
-                {yearFilled}
-                {" / "}
-                {yearTotal}
-              </div>
+        <section className="mt-12">
+          <div className="flex justify-between items-baseline mb-3">
+            <div className="eyebrow">your year</div>
+            <div className="mono text-[11px] tracking-[0.14em] text-moss">
+              {yearFilled}
+              {" / "}
+              {yearTotal}
             </div>
-            <YearScroll series={series} />
-          </section>
-        )}
+          </div>
+          <YearScroll series={series} />
+        </section>
 
         {/* ── Band 3 · Bottom strip ───────────────────────────────── */}
         <section className="mt-12 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] lg:gap-12">

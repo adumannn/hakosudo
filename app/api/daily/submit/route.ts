@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { getCity } from "@/lib/geo";
 
@@ -51,5 +52,8 @@ export async function POST(req: NextRequest) {
   );
 
   if (error) return NextResponse.json({ error: "db" }, { status: 500 });
+  // The home page snapshot is cached cross-request — fresh solve invalidates it
+  // so "first solve / solving now / median" reflect this submission immediately.
+  revalidateTag(`daily-snapshot:${body.date}`);
   return NextResponse.json({ ok: true });
 }

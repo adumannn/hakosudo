@@ -21,6 +21,7 @@ const skin = (overrides: Partial<SkinRecord>): SkinRecord => ({
 
 const viewer = (overrides: Partial<Viewer>): Viewer => ({
   userId: "u1",
+  email: null,
   isPro: false,
   activeSkinId: null,
   ownedSkinIds: new Set(),
