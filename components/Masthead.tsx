@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
 
-type NavKey = "today" | "play" | "ledger" | "profile" | "pro";
+type NavKey = "today" | "play" | "ledger" | "skins" | "profile" | "pro";
 
 interface MastheadProps {
   active?: NavKey;
@@ -114,6 +114,7 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: "today", label: "Today", href: "/" },
   { key: "play", label: "Casual", href: "/play" },
   { key: "ledger", label: "Ledger", href: "/leaderboard" },
+  { key: "skins", label: "Skins", href: "/skins" },
   { key: "profile", label: "Profile", href: "/profile" },
   { key: "pro", label: "Pro", href: "/pro" },
 ];

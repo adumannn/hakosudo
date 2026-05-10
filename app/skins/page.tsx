@@ -37,7 +37,7 @@ export default async function SkinsPage({
   return (
     <main className="min-h-screen bg-bone">
       <Masthead
-        active="profile"
+        active="skins"
         initial={initial}
         email={user.email ?? null}
         rightChip={<SkinChip />}
