@@ -8,7 +8,7 @@ const SFX_DIR = path.join(process.cwd(), "public", "sfx");
 
 function checkFfmpeg(): void {
   const result = spawnSync("ffmpeg", ["-version"], { stdio: "pipe" });
-  if (result.status !== 0) {
+  if (result.error || result.status !== 0) {
     console.error("ffmpeg not found on PATH. Install it (e.g. `brew install ffmpeg`) and try again.");
     process.exit(1);
   }
