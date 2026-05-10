@@ -39,6 +39,9 @@ export default async function Achievements() {
               <span className="text-vermillion ml-3.5 text-[0.7em] align-baseline">章</span>
             </h1>
           </div>
+          <div className="mono text-[10.5px] tracking-[0.18em] uppercase text-moss text-right leading-relaxed">
+            twelve marks total
+          </div>
         </div>
 
         <p className="ital text-[16px] text-moss leading-snug max-w-[60ch] mt-6">

@@ -5,14 +5,14 @@ import { SkeletonBox } from "@/components/skeletons/SkeletonBox";
 export function GameShellSkeleton() {
   return (
     <>
-      <header className="masthead" aria-hidden="true">
+      <header className="masthead">
         <div className="flex items-center gap-7">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="stamp">日</div>
             <div className="name">Daily</div>
           </Link>
         </div>
-        <div className="flex items-center gap-3 sm:gap-6">
+        <div aria-hidden="true" className="flex items-center gap-3 sm:gap-6">
           <SkeletonBox className="h-6 w-16" />
           <SkeletonBox className="h-8 w-8 rounded-full" />
         </div>

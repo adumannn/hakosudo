@@ -6,6 +6,7 @@ import { Masthead } from "@/components/Masthead";
 import { UsernamePicker } from "@/components/profile/UsernamePicker";
 import { ProfileBody } from "./ProfileBody";
 import { ProfileStreakBlock } from "./ProfileStreakBlock";
+import { ProfileLastOpened } from "./ProfileLastOpened";
 import { ProfileBodySkeleton } from "@/components/skeletons/ProfileBodySkeleton";
 import { SkeletonBox } from "@/components/skeletons/SkeletonBox";
 
@@ -112,6 +113,9 @@ export default async function Profile() {
                 Continue today&rsquo;s box{" "}
                 <span className="font-jakarta font-light text-[18px]">→</span>
               </Link>
+              <Suspense fallback={null}>
+                <ProfileLastOpened userId={user.id} userCreatedAt={userCreatedAt} />
+              </Suspense>
             </div>
           </div>
 

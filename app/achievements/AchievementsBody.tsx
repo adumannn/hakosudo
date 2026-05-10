@@ -36,7 +36,7 @@ export async function AchievementsBody({ userId }: { userId: string }) {
 
   return (
     <>
-      <div className="mono text-[10.5px] tracking-[0.18em] uppercase text-moss text-right leading-relaxed -mt-7 mb-6">
+      <div className="mono text-[10.5px] tracking-[0.18em] uppercase text-moss text-right leading-relaxed mt-6 mb-6">
         <strong className="mincho text-vermillion font-semibold text-[18px]">{earnedCount}</strong>
         <span className="text-moss"> / 12 earned</span>
       </div>
