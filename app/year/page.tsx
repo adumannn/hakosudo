@@ -6,6 +6,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { todayUTC } from "@/lib/utils";
 import { computeUnifiedStreak } from "@/lib/seal/streak";
 import { assembleYearSeries } from "@/lib/seal/year";
+import { fillCalendarYear, type CalendarEntry } from "@/lib/seal/calendar";
 import { dateLine } from "@/lib/kanji";
 import type { YearSeries } from "@/lib/seal/types";
 
@@ -68,7 +69,7 @@ export default async function YearPage() {
       : yearStart;
     series = assembleYearSeries({
       today,
-      calendar: (cal ?? []) as unknown as Parameters<typeof assembleYearSeries>[0]["calendar"],
+      calendar: fillCalendarYear(year, (cal ?? []) as CalendarEntry[]),
       completedByDate,
       frozenDates,
       signupDate,

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { assembleYearSeries } from "@/lib/seal/year";
+import { fillCalendarYear, type CalendarEntry } from "@/lib/seal/calendar";
 import { todayUTC } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -73,7 +74,7 @@ export async function GET() {
 
   const series = assembleYearSeries({
     today,
-    calendar: (calendar ?? []) as unknown as Parameters<typeof assembleYearSeries>[0]["calendar"],
+    calendar: fillCalendarYear(year, (calendar ?? []) as CalendarEntry[]),
     completedByDate,
     frozenDates,
     signupDate,

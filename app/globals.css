@@ -714,21 +714,20 @@
   50%      { opacity: 0.35; }
 }
 
-/* Vermillion brushstroke under today's heatmap cell — tapered ends, slight tilt */
+/* Vermillion brushstroke under today's heatmap cell — tapered ends, contained within the cell width */
 .brush-today {
   position: relative;
 }
 .brush-today::after {
   content: "";
   position: absolute;
-  left: -3px;
-  right: -3px;
-  bottom: -7px;
-  height: 3px;
+  left: 1px;
+  right: 1px;
+  bottom: -4px;
+  height: 2px;
   background: hsl(var(--vermillion));
-  -webkit-mask: linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%);
-  mask: linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%);
-  transform: rotate(-1.2deg);
+  -webkit-mask: linear-gradient(90deg, transparent 0%, black 16%, black 84%, transparent 100%);
+  mask: linear-gradient(90deg, transparent 0%, black 16%, black 84%, transparent 100%);
   pointer-events: none;
 }
 

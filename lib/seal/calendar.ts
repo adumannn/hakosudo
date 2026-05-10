@@ -46,6 +46,28 @@ function addDays(iso: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Gregorian leap-year rule: divisible by 4, except centuries unless divisible by 400. */
+function isLeapYear(y: number): boolean {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+/**
+ * Returns one calendar entry per day for the given year, preferring rows
+ * already in `dbRows` and falling back to the deterministic assignment from
+ * `assignKanjiForRange` for any missing dates. Used so the year scroll always
+ * renders 365/366 cells even if the seal-calendar table has gaps.
+ */
+export function fillCalendarYear(
+  year: number,
+  dbRows: CalendarEntry[],
+): CalendarEntry[] {
+  const total = isLeapYear(year) ? 366 : 365;
+  const computed = assignKanjiForRange(`${year}-01-01`, total);
+  const byDate = new Map<string, CalendarEntry>();
+  for (const r of dbRows) byDate.set(r.date, r);
+  return computed.map((c) => byDate.get(c.date) ?? c);
+}
+
 function pickFromBank(date: string, used: string[]): KanjiEntry {
   const seed = hashDate(date);
   const usedSet = new Set(used);
