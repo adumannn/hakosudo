@@ -14,7 +14,19 @@ const today = new Date();
 today.setUTCHours(0, 0, 0, 0);
 const startStr =
   process.env.SEAL_SEED_START ?? `${today.getUTCFullYear()}-01-01`;
-const DAYS_AHEAD = Number(process.env.SEAL_SEED_DAYS ?? 730);
+const DAYS_AHEAD = Number.parseInt(process.env.SEAL_SEED_DAYS ?? "730", 10);
+
+if (
+  !/^\d{4}-\d{2}-\d{2}$/.test(startStr) ||
+  Number.isNaN(Date.parse(`${startStr}T00:00:00Z`))
+) {
+  throw new Error(`invalid SEAL_SEED_START: "${startStr}" (expected YYYY-MM-DD)`);
+}
+if (!Number.isInteger(DAYS_AHEAD) || DAYS_AHEAD <= 0) {
+  throw new Error(
+    `invalid SEAL_SEED_DAYS: "${process.env.SEAL_SEED_DAYS}" (expected positive integer)`,
+  );
+}
 
 async function main() {
   if (!SUPABASE_URL || !SERVICE_KEY) {
