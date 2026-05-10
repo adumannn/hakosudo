@@ -63,7 +63,7 @@ export default async function Home() {
     .eq("date", today)
     .maybeSingle();
   const todaySealKanji =
-    (todayPuzzle?.skins as { seal_kanji: string } | null)?.seal_kanji ?? "完";
+    (todayPuzzle?.skins as unknown as { seal_kanji: string } | null)?.seal_kanji ?? "完";
   const todaySeal = todayCal
     ? {
         date: todayCal.date,
@@ -124,7 +124,7 @@ export default async function Home() {
       : yearStart;
     series = assembleYearSeries({
       today,
-      calendar: (cal ?? []) as any[],
+      calendar: (cal ?? []) as unknown as Parameters<typeof assembleYearSeries>[0]["calendar"],
       completedByDate,
       frozenDates: frozen,
       signupDate,
@@ -277,7 +277,6 @@ export default async function Home() {
           <TodayCard
             today={todaySeal}
             completedElapsed={completedTodayElapsed}
-            streakDays={streak}
             freezePrompt={freezePrompt}
             tategakiDay={weekdayJp()}
           />

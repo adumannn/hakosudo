@@ -73,7 +73,7 @@ export async function GET() {
 
   const series = assembleYearSeries({
     today,
-    calendar: (calendar ?? []) as any[],
+    calendar: (calendar ?? []) as unknown as Parameters<typeof assembleYearSeries>[0]["calendar"],
     completedByDate,
     frozenDates,
     signupDate,

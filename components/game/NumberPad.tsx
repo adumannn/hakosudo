@@ -14,7 +14,6 @@ export function NumberPad({ onPause, paused, variant = "default" }: NumberPadPro
   const selected = useGame((s) => s.selected);
   const noteMode = useGame((s) => s.noteMode);
   const board = useGame((s) => s.board);
-  const givens = useGame((s) => s.givens);
   const selectedVal = selected != null ? board[selected] : 0;
   const setCell = useGame((s) => s.setCell);
   const toggleNote = useGame((s) => s.toggleNote);
@@ -30,11 +29,12 @@ export function NumberPad({ onPause, paused, variant = "default" }: NumberPadPro
       if (v) c[v] = Math.max(0, c[v] - 1);
     }
     return c;
-  }, [board, givens]);
+  }, [board]);
 
   const press = (v: number) => {
     if (selected == null) return;
-    noteMode ? toggleNote(selected, v) : setCell(selected, v);
+    if (noteMode) toggleNote(selected, v);
+    else setCell(selected, v);
   };
 
   const erase = () => {
