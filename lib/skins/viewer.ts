@@ -15,14 +15,16 @@ export interface Viewer {
   allSkins: SkinRecord[];
 }
 
-const EMPTY_VIEWER: Viewer = {
-  userId: null,
-  email: null,
-  isPro: false,
-  activeSkinId: null,
-  ownedSkinIds: new Set(),
-  allSkins: [],
-};
+function buildEmptyViewer(allSkins: SkinRecord[] = []): Viewer {
+  return {
+    userId: null,
+    email: null,
+    isPro: false,
+    activeSkinId: null,
+    ownedSkinIds: new Set<string>(),
+    allSkins,
+  };
+}
 
 // Skins are essentially static config (~10 rows, edited rarely). Cross-request
 // cache keeps SSR off the auth-shared Supabase pool for this read. The inner
@@ -54,7 +56,7 @@ export const getViewer = cache(async (): Promise<Viewer> => {
 
   const allSkinsPromise = fetchAllSkins();
   if (!hasSupabaseAuthCookie(cookies().getAll())) {
-    return { ...EMPTY_VIEWER, allSkins: await allSkinsPromise };
+    return buildEmptyViewer(await allSkinsPromise);
   }
 
   const sb = createServerClient();
@@ -68,7 +70,7 @@ export const getViewer = cache(async (): Promise<Viewer> => {
   logQueryError("auth.getUser", userError);
 
   if (!user) {
-    return { ...EMPTY_VIEWER, allSkins };
+    return buildEmptyViewer(allSkins);
   }
 
   const [

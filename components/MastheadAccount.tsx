@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +19,16 @@ export function MastheadAccount({
   email: string;
 }) {
   const onSignOut = async () => {
-    const { createClient } = await import("@/lib/supabase/client");
-    const sb = createClient();
+    let sb: ReturnType<typeof createSupabaseBrowserClient>;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      sb = createClient();
+    } catch (error) {
+      console.error("[signOut] failed to load Supabase client:", error);
+      window.alert("Couldn't load sign-out controls — refresh and try again.");
+      return;
+    }
+
     // Default scope is "global" — that signs out every device and can 403
     // when a third-party-cookie blocker stops the refresh-token cookie from
     // reaching the auth server. Retry with "local" so the current tab still
@@ -36,7 +45,7 @@ export function MastheadAccount({
       );
       return;
     }
-    window.location.href = "/";
+    window.location.replace("/");
   };
 
   return (
