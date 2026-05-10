@@ -15,21 +15,28 @@ export function SfxToggle({ initialEnabled }: SfxToggleProps) {
   const [error, setError] = useState(false);
 
   const update = (next: boolean) => {
+    const prev = enabled;
     setEnabled(next);
     setError(false);
     setSfxEnabled(next);
 
     startTransition(async () => {
-      const result = await saveSfxPreference({ enabled: next });
-      if (!result.ok) {
-        setEnabled(!next);
-        setSfxEnabled(!next);
-        setError(true);
-        return;
-      }
+      try {
+        const result = await saveSfxPreference({ enabled: next });
+        if (!result.ok) {
+          setEnabled(prev);
+          setSfxEnabled(prev);
+          setError(true);
+          return;
+        }
 
-      setEnabled(result.enabled);
-      setSfxEnabled(result.enabled);
+        setEnabled(result.enabled);
+        setSfxEnabled(result.enabled);
+      } catch {
+        setEnabled(prev);
+        setSfxEnabled(prev);
+        setError(true);
+      }
     });
   };
 
@@ -37,7 +44,10 @@ export function SfxToggle({ initialEnabled }: SfxToggleProps) {
     <div className="border-t border-sumi/18 pt-6">
       <div className="flex items-center justify-between gap-6">
         <div>
-          <div className="mono text-[10.5px] tracking-[0.22em] uppercase text-moss">
+          <div
+            id="sfx-toggle-label"
+            className="mono text-[10.5px] tracking-[0.22em] uppercase text-moss"
+          >
             sound on solve and number-pad
           </div>
           <div className="ital text-[14px] text-moss mt-1">
@@ -47,6 +57,7 @@ export function SfxToggle({ initialEnabled }: SfxToggleProps) {
         <button
           type="button"
           role="switch"
+          aria-labelledby="sfx-toggle-label"
           aria-checked={enabled}
           disabled={pending}
           onClick={() => update(!enabled)}
