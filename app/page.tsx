@@ -86,21 +86,18 @@ export default async function Home() {
     });
     const topCity = cityCounts[0] ?? null;
     return (
-      <>
-        <Masthead active="today" initial="·" />
-        <Landing
-          dateLabelJp={labels.jp}
-          dateLabelEn={labels.en}
-          dailySeq={snapshot.seq}
-          solvingNow={snapshot.solvingNow}
-          firstSolveTime={
-            snapshot.firstSolve
-              ? formatTime(snapshot.firstSolve.elapsedSeconds)
-              : null
-          }
-          cityCount={topCity}
-        />
-      </>
+      <Landing
+        dateLabelJp={labels.jp}
+        dateLabelEn={labels.en}
+        dailySeq={snapshot.seq}
+        solvingNow={snapshot.solvingNow}
+        firstSolveTime={
+          snapshot.firstSolve
+            ? formatTime(snapshot.firstSolve.elapsedSeconds)
+            : null
+        }
+        cityCount={topCity}
+      />
     );
   }
 

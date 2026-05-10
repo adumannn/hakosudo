@@ -120,6 +120,25 @@ export function Landing({
 
   return (
     <main className="bg-bone text-sumi">
+      {/* ──────────── MARKETING NAV ──────────── */}
+      <nav className="flex items-center justify-between px-6 lg:px-16 py-4 lg:py-5 border-b-[1.5px] border-sumi bg-bone sticky top-0 z-30">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div
+            className="w-[28px] h-[28px] bg-vermillion text-bone flex items-center justify-center mincho font-bold leading-none"
+            style={{ fontSize: 14 }}
+          >
+            箱
+          </div>
+          <span className="mincho font-semibold text-[18px] text-sumi">Hako</span>
+        </Link>
+        <Link
+          href="/auth/login"
+          className="mono text-[10.5px] tracking-[0.22em] uppercase text-sumi border-b-[1.5px] border-vermillion pb-0.5 hover:text-vermillion transition-colors"
+        >
+          Sign in →
+        </Link>
+      </nav>
+
       {/* ──────────── HERO ──────────── */}
       <section className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] border-b-[1.5px] border-sumi lg:min-h-[660px]">
         <div className="px-8 py-14 lg:px-16 lg:pt-20 lg:pb-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r-[1.5px] border-sumi">
@@ -161,14 +180,14 @@ export function Landing({
 
             <div className="mt-11 flex flex-wrap items-center gap-4">
               <Link
-                href="/play/daily"
+                href="/play/hard"
                 className="btn-hako red"
                 style={{ padding: "18px 28px", fontSize: 18 }}
               >
                 Begin today <span className="font-jakarta font-light text-[20px]">→</span>
               </Link>
               <Link
-                href="/play/medium"
+                href="/play"
                 className="relative mono text-[11px] tracking-[0.22em] uppercase text-sumi pb-2"
               >
                 or pick a difficulty →
@@ -583,7 +602,7 @@ export function Landing({
           </div>
           <div className="flex flex-col gap-3.5 items-start">
             <Link
-              href="/play/daily"
+              href="/play/hard"
               className="btn-hako red"
               style={{ fontSize: 18, padding: "18px 28px" }}
             >
@@ -597,25 +616,9 @@ export function Landing({
         </div>
         <div className="mt-8 flex flex-col md:flex-row md:justify-between gap-4 mono text-[10px] tracking-[0.18em] uppercase text-moss">
           <div>
-            <strong className="text-bone font-medium">Hako</strong> · made in
-            Almaty · for nFactorial 2026
+            <strong className="text-bone font-medium">Hako</strong>
           </div>
-          <div className="flex gap-[22px] items-center flex-wrap">
-            <span className="text-moss-2" aria-disabled="true" title="coming soon">
-              about
-            </span>
-            <a
-              href="https://github.com/adumannn/sudoku"
-              className="text-moss-2 hover:text-bone"
-            >
-              github
-            </a>
-            <span className="text-moss-2" aria-disabled="true" title="coming soon">
-              privacy
-            </span>
-            <span className="text-moss-2">tg @hako</span>
-            <span className="text-moss/60">v1.0 · {seqLabel}</span>
-          </div>
+          <div className="text-moss/60">v1.0 · {seqLabel}</div>
         </div>
       </footer>
     </main>
