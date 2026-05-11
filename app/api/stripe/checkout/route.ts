@@ -4,19 +4,28 @@ import { getCurrentUser } from "@/lib/auth/identity";
 
 export async function POST() {
   const { user } = await getCurrentUser();
+
+  const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  let siteBase: URL | null = null;
+  if (rawSiteUrl) {
+    try {
+      siteBase = new URL(rawSiteUrl);
+    } catch {
+      siteBase = null;
+    }
+  }
+
   if (!user) {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    if (!siteUrl) {
-      console.error("[stripe/checkout] missing NEXT_PUBLIC_SITE_URL");
+    if (!siteBase) {
+      console.error("[stripe/checkout] missing or malformed NEXT_PUBLIC_SITE_URL");
       return NextResponse.json({ error: "checkout temporarily unavailable" }, { status: 503 });
     }
-    return NextResponse.redirect(new URL("/auth/login", siteUrl), { status: 303 });
+    return NextResponse.redirect(new URL("/auth/login", siteBase), { status: 303 });
   }
 
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   const proPriceId = process.env.STRIPE_PRICE_ID_PRO;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!stripeSecretKey || !proPriceId || !siteUrl) {
+  if (!stripeSecretKey || !proPriceId || !siteBase) {
     console.error("[stripe/checkout] missing checkout config");
     return NextResponse.json({ error: "checkout temporarily unavailable" }, { status: 503 });
   }
@@ -27,8 +36,8 @@ export async function POST() {
     session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: proPriceId, quantity: 1 }],
-      success_url: `${siteUrl}/pro?success=true`,
-      cancel_url: `${siteUrl}/pro?cancel=true`,
+      success_url: new URL("/pro?success=true", siteBase).toString(),
+      cancel_url: new URL("/pro?cancel=true", siteBase).toString(),
       customer_email: user.email,
       metadata: { user_id: user.id },
     });
