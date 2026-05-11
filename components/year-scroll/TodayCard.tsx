@@ -54,12 +54,16 @@ export function TodayCard({
   const applyFreeze = async () => {
     if (!freezePrompt) return;
     setFreezeStatus("pending");
-    const res = await fetch("/api/seal/freeze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: freezePrompt.date }),
-    });
-    setFreezeStatus(res.ok ? "done" : "error");
+    try {
+      const res = await fetch("/api/seal/freeze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: freezePrompt.date }),
+      });
+      setFreezeStatus(res.ok ? "done" : "error");
+    } catch {
+      setFreezeStatus("error");
+    }
   };
 
   return (
