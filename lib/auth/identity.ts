@@ -34,6 +34,7 @@ export interface Profile {
   username: string | null;
   sfx_enabled: boolean;
   created_at: string;
+  freeze_credits: number;
 }
 
 export const getProfile = cache(async (): Promise<Profile | null> => {
@@ -41,7 +42,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!user) return null;
   const { data, error } = await sb
     .from("profiles")
-    .select("id,city,is_pro,active_skin_id,username,sfx_enabled,created_at")
+    .select("id,city,is_pro,active_skin_id,username,sfx_enabled,created_at,freeze_credits")
     .eq("id", user.id)
     .maybeSingle();
   if (error) console.error("[auth/identity] profiles.select:", error);
