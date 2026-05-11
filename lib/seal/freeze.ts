@@ -27,3 +27,30 @@ export function computeAllotment(
     Math.ceil((daysLeft / daysInMonth) * MAX_FREEZES_PER_MONTH),
   );
 }
+
+export type FreezeSource = "allotment" | "credit" | "none";
+
+export function chooseFreezeSource(
+  profile: { is_pro: boolean; freeze_credits: number },
+  allotmentUsed: number,
+  allotment: number,
+): FreezeSource {
+  if (profile.is_pro && allotmentUsed < allotment) return "allotment";
+  if (profile.freeze_credits > 0) return "credit";
+  return "none";
+}
+
+export function hasRecoverableStreak(
+  seals: Array<{ date: string; state: string }>,
+  today: string,
+): boolean {
+  const todayMs = Date.parse(today + "T00:00:00Z");
+  for (const s of seals) {
+    if (s.state !== "filled" && s.state !== "freeze") continue;
+    if (s.date === today) continue;
+    const ms = Date.parse(s.date + "T00:00:00Z");
+    const ageDays = (todayMs - ms) / 86400000;
+    if (ageDays > 0 && ageDays <= 7) return true;
+  }
+  return false;
+}
