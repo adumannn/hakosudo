@@ -1,12 +1,9 @@
 "use server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { revalidatePath } from "next/cache";
 
 export async function saveCity(input: { city: string }) {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+  const { user, sb } = await getCurrentUser();
   if (!user) return { ok: false, error: "auth" as const };
 
   const normalized = input.city.trim().toLowerCase();

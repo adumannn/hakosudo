@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { canApplyOverride } from "@/lib/skins/resolve";
 import { getViewer } from "@/lib/skins/viewer";
 
@@ -10,10 +10,7 @@ export type SetActiveSkinResult =
   | { ok: false; error: "unauthenticated" | "not found" | "not entitled" | "write failed" };
 
 export async function setActiveSkin(skinId: string | null): Promise<SetActiveSkinResult> {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+  const { user, sb } = await getCurrentUser();
   if (!user) return { ok: false, error: "unauthenticated" };
 
   if (skinId === null) {

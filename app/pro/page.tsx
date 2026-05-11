@@ -1,21 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createServerClient } from "@/lib/supabase/server";
+import { requireUser, getProfile } from "@/lib/auth/identity";
 
 export const dynamic = "force-dynamic";
 
 export default async function Pro() {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("is_pro")
-    .eq("id", user.id)
-    .maybeSingle();
+  await requireUser();
+  const profile = await getProfile();
 
   if (profile?.is_pro) {
     return (

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { createServerClient } from "@/lib/supabase/server";
+import { requireUser, getProfile } from "@/lib/auth/identity";
 import { Masthead } from "@/components/Masthead";
 import { UsernamePicker } from "@/components/profile/UsernamePicker";
 import { ProfileBody } from "./ProfileBody";
@@ -16,20 +15,8 @@ const STAMP_NOISE =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
 
 export default async function Profile() {
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  if (!session) redirect("/auth/login");
-  const user = session.user;
-
-  // Fetch the small profile row needed by the synchronous left-rail header.
-  // ProfileBody/ProfileStreakBlock fetch the heavy data themselves via cache().
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("created_at,city,username")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { user } = await requireUser();
+  const profile = await getProfile();
 
   const initial = user.email?.[0] ?? "·";
   const emailHandle = user.email?.split("@")[0] ?? user.id.slice(0, 8);

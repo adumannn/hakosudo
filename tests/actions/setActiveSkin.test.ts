@@ -8,6 +8,22 @@ const { mockGetUser, mockUpdate, mockEq, mockFrom, mockGetViewer } = vi.hoisted(
   mockGetViewer: vi.fn(),
 }));
 
+// React's `cache` is only exported under the `react-server` condition, which
+// vitest (jsdom) doesn't activate. Replace it with an identity wrapper so the
+// module under test can import it via `@/lib/auth/identity`.
+vi.mock("react", async () => {
+  const actual = await vi.importActual<typeof import("react")>("react");
+  return { ...actual, cache: <T extends (...args: never[]) => unknown>(fn: T) => fn };
+});
+
+vi.mock("next/headers", () => ({
+  cookies: () => ({ getAll: () => [{ name: "sb-x-auth-token" }] }),
+}));
+
+vi.mock("@/lib/supabase/auth-cookie", () => ({
+  hasSupabaseAuthCookie: () => true,
+}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: () => ({
     auth: { getUser: mockGetUser },

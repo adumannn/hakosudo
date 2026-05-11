@@ -1,19 +1,16 @@
 // app/api/seal/freeze/route.ts
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser, getProfile } from "@/lib/auth/identity";
 import { computeAllotment } from "@/lib/seal/freeze";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  if (!session?.user) {
+  const { user, sb } = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "auth" }, { status: 401 });
   }
-  const userId = session.user.id;
+  const userId = user.id;
 
   const body = (await req.json()) as { date?: string };
   if (!body.date || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
@@ -30,11 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "out-of-window" }, { status: 400 });
   }
 
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("is_pro,created_at")
-    .eq("id", userId)
-    .maybeSingle();
+  const profile = await getProfile();
   if (!profile?.is_pro) {
     return NextResponse.json({ error: "pro-only" }, { status: 403 });
   }

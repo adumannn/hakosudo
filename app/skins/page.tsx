@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { Masthead } from "@/components/Masthead";
 import { SkinCard } from "@/components/skins/SkinCard";
 import { SkinChip } from "@/components/skins/SkinChip";
@@ -14,10 +14,7 @@ export default async function SkinsPage({
 }: {
   searchParams: { purchased?: string; canceled?: string };
 }) {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+  const { user } = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const viewer = await getViewer();

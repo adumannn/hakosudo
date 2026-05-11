@@ -1,6 +1,6 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { computeUnifiedStreak } from "@/lib/seal/streak";
 
 export const runtime = "edge";
@@ -13,10 +13,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     return new Response("bad-date", { status: 400 });
   }
 
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
+  const { user, sb } = await getCurrentUser();
 
   const { data: cal } = await sb
     .from("daily_seal_calendar")
@@ -28,8 +25,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   let elapsed: number | null = null;
   let streak = 0;
   let dayIndex = 0;
-  if (session?.user) {
-    const userId = session.user.id;
+  if (user) {
+    const userId = user.id;
     const year = date.slice(0, 4);
     const [{ data: result }, { data: results }, { data: freezes }] = await Promise.all([
       sb.from("daily_results").select("elapsed_seconds")

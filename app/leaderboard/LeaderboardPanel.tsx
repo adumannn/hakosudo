@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser, getProfile } from "@/lib/auth/identity";
 import { formatTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { computeCityCounts, computeUserStanding } from "@/lib/stats/leaderboard";
@@ -32,13 +32,11 @@ export async function LeaderboardPanel({
   cityFilterRaw,
   range,
 }: LeaderboardPanelProps) {
-  const sb = createServerClient();
+  const { sb } = await getCurrentUser();
 
   // Fan out the queries the panel needs.
-  const [profileRes, dailyMetaRes, allTodayRes] = await Promise.all([
-    userId
-      ? sb.from("profiles").select("city").eq("id", userId).maybeSingle()
-      : Promise.resolve({ data: null }),
+  const [profile, dailyMetaRes, allTodayRes] = await Promise.all([
+    getProfile(),
     sb.from("daily_puzzles").select("seq,difficulty").eq("date", date).maybeSingle(),
     sb
       .from("daily_results")
@@ -47,7 +45,7 @@ export async function LeaderboardPanel({
       .order("elapsed_seconds", { ascending: true }),
   ]);
 
-  const userProfileCity = (profileRes.data as { city: string | null } | null)?.city ?? null;
+  const userProfileCity = profile?.city ?? null;
   const dailyMeta = dailyMetaRes.data as { seq: number | null; difficulty: string | null } | null;
   const seq = dailyMeta?.seq ?? null;
   const difficulty = dailyMeta?.difficulty ?? "—";

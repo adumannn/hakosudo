@@ -1,15 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Admin Supabase client backed by the service role key. Bypasses RLS.
+ * Service-role Supabase client.
  *
- * Server-only. NEVER import this from a client component, and never
- * surface results from this client back to a client without first
- * filtering them through the user's identity.
+ * **Use in:** server code that must bypass Row-Level Security — webhooks,
+ * admin operations, batch jobs.
  *
- * Returns null when env vars are missing (e.g. local contributor setup
- * without secrets). Callers should treat the null case as a soft
- * failure: skip the elevated operation, do not throw.
+ * **DANGER:** RLS is bypassed. Never pass user input through this client
+ * without explicit authorization checks first. Prefer `createServerClient`
+ * for anything that should respect user permissions.
  */
 export function createAdminClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

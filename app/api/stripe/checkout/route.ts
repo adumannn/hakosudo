@@ -1,12 +1,9 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 
 export async function POST() {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+  const { user } = await getCurrentUser();
   if (!user)
     return NextResponse.redirect(new URL("/auth/login", process.env.NEXT_PUBLIC_SITE_URL!));
 

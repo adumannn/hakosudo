@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { createServerClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth/identity";
 import { Masthead } from "@/components/Masthead";
 import { AchievementsBody } from "./AchievementsBody";
 import { AchievementsBodySkeleton } from "@/components/skeletons/AchievementsBodySkeleton";
@@ -9,12 +8,7 @@ import { AchievementsBodySkeleton } from "@/components/skeletons/AchievementsBod
 export const dynamic = "force-dynamic";
 
 export default async function Achievements() {
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  if (!session) redirect("/auth/login");
-  const user = session.user;
+  const { user } = await requireUser();
 
   const initial = user.email?.[0] ?? "·";
 

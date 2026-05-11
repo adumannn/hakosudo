@@ -1,13 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser, getProfile } from "@/lib/auth/identity";
 import { getCity } from "@/lib/geo";
 
 export async function POST(req: NextRequest) {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+  const { user, sb } = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "auth" }, { status: 401 });
 
   const body = (await req.json()) as {
@@ -33,11 +30,7 @@ export async function POST(req: NextRequest) {
   // who haven't picked a city yet, but only if they consented.
   let city: string | null = null;
   if (body.consentCity) {
-    const { data: profile } = await sb
-      .from("profiles")
-      .select("city")
-      .eq("id", user.id)
-      .maybeSingle();
+    const profile = await getProfile();
     city = profile?.city ?? getCity();
   }
 

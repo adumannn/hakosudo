@@ -3,10 +3,19 @@ import type { CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 /**
- * Server-side Supabase client. Falls back to a `null`-shaped no-op client
- * when env vars are absent so server components don't crash during a
- * misconfigured deploy. Callers already use safe-access patterns
- * (`?.`, try/catch around queries) so this degrades gracefully.
+ * Cookie-aware server-side Supabase client.
+ *
+ * **Use in:** Server Components, server actions, and API routes that touch
+ * user-scoped data (anything backed by Row-Level Security).
+ *
+ * **Don't use for:** caller-less reads that should be deduped across a
+ * request — prefer the helpers in `lib/auth/identity.ts`, which already
+ * hold a request-cached server client.
+ *
+ * Falls back to a `null`-shaped no-op client when env vars are absent so
+ * server components don't crash during a misconfigured deploy. Callers
+ * already use safe-access patterns (`?.`, try/catch around queries) so
+ * this degrades gracefully.
  */
 export const createServerClient = () => {
   const store = cookies();

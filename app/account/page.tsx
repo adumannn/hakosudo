@@ -1,24 +1,13 @@
-import { redirect } from "next/navigation";
 import { Masthead } from "@/components/Masthead";
 import { SfxToggle } from "@/components/account/SfxToggle";
-import { createServerClient } from "@/lib/supabase/server";
+import { requireUser, getProfile } from "@/lib/auth/identity";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-
-  if (!user) redirect("/auth/login");
-
+  const { user } = await requireUser();
+  const profile = await getProfile();
   const initial = user.email?.[0] ?? "·";
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("sfx_enabled")
-    .eq("id", user.id)
-    .maybeSingle();
 
   return (
     <>

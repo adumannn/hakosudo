@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { mockGetSession, mockMaybeSingle, mockSelect, mockFrom, mockCheckAndIncrement, mockGenerateContentStream } = vi.hoisted(() => ({
-  mockGetSession: vi.fn(),
+const { mockGetUser, mockMaybeSingle, mockSelect, mockFrom, mockCheckAndIncrement, mockGenerateContentStream } = vi.hoisted(() => ({
+  mockGetUser: vi.fn(),
   mockMaybeSingle: vi.fn(),
   mockSelect: vi.fn(),
   mockFrom: vi.fn(),
@@ -10,9 +10,25 @@ const { mockGetSession, mockMaybeSingle, mockSelect, mockFrom, mockCheckAndIncre
   mockGenerateContentStream: vi.fn(),
 }));
 
+// React's `cache` is only exported under the `react-server` condition, which
+// vitest (jsdom) doesn't activate. Replace it with an identity wrapper so the
+// module under test can import it via `@/lib/auth/identity`.
+vi.mock("react", async () => {
+  const actual = await vi.importActual<typeof import("react")>("react");
+  return { ...actual, cache: <T extends (...args: never[]) => unknown>(fn: T) => fn };
+});
+
+vi.mock("next/headers", () => ({
+  cookies: () => ({ getAll: () => [{ name: "sb-x-auth-token" }] }),
+}));
+
+vi.mock("@/lib/supabase/auth-cookie", () => ({
+  hasSupabaseAuthCookie: () => true,
+}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: () => ({
-    auth: { getSession: mockGetSession },
+    auth: { getUser: mockGetUser },
     from: mockFrom,
   }),
 }));
@@ -68,21 +84,21 @@ beforeEach(() => {
 
 describe("POST /api/coach", () => {
   it("returns 401 when no session", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
     const res = await POST(makeReq({ board: emptyBoard, target: 0, kind: "nudge" }));
     expect(res.status).toBe(401);
     expect(mockCheckAndIncrement).not.toHaveBeenCalled();
   });
 
   it("returns 400 on malformed body without consuming quota", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     const res = await POST(makeReq({ board: [1, 2, 3], target: 0, kind: "nudge" }));
     expect(res.status).toBe(400);
     expect(mockCheckAndIncrement).not.toHaveBeenCalled();
   });
 
   it("returns 400 when kind is invalid", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     const res = await POST(makeReq({ board: emptyBoard, target: 0, kind: "wat" }));
     expect(res.status).toBe(400);
     expect(mockCheckAndIncrement).not.toHaveBeenCalled();
@@ -90,7 +106,7 @@ describe("POST /api/coach", () => {
 
   it("returns 500 without consuming quota when GOOGLE_API_KEY is unset", async () => {
     delete process.env.GOOGLE_API_KEY;
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     const board = Array(81).fill(0);
     for (let r = 1; r <= 8; r++) board[r * 9] = r + 1;
     const res = await POST(makeReq({ board, target: 0, kind: "ask" }));
@@ -99,7 +115,7 @@ describe("POST /api/coach", () => {
   });
 
   it("returns 200 with completion text on solved board, no quota consumed", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     const res = await POST(makeReq({ board: solvedBoard, target: 0, kind: "ask" }));
     expect(res.status).toBe(200);
     const text = await res.text();
@@ -108,7 +124,7 @@ describe("POST /api/coach", () => {
   });
 
   it("returns 429 when free user is at quota", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     mockCheckAndIncrement.mockResolvedValue({ ok: false, remaining: 0 });
     const board = Array(81).fill(0);
     for (let r = 1; r <= 8; r++) board[r * 9] = r + 1;
@@ -117,7 +133,7 @@ describe("POST /api/coach", () => {
   });
 
   it("streams Gemini output when hint is found and quota OK", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
     const board = Array(81).fill(0);
     for (let r = 1; r <= 8; r++) board[r * 9] = r + 1;
@@ -132,7 +148,7 @@ describe("POST /api/coach", () => {
   });
 
   it("includes Digit in the prompt when kind is ask", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
     const board = Array(81).fill(0);
     for (let r = 1; r <= 8; r++) board[r * 9] = r + 1;
@@ -145,7 +161,7 @@ describe("POST /api/coach", () => {
   });
 
   it("streams a downgrade payload when free user hits a pro-tier position", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
     // Board where target has only a locked-candidate (pro-tier) hint available.
     // Box 0 has no 7; row 1 col 5 and row 2 col 4 have 7, so 7 in box 0 is locked to row 0.
@@ -162,7 +178,7 @@ describe("POST /api/coach", () => {
   });
 
   it("falls back to engine voice when Gemini errors before emitting a token", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
     mockGenerateContentStream.mockRejectedValue(new Error("rate limit exceeded"));
     const board = Array(81).fill(0);
@@ -176,7 +192,7 @@ describe("POST /api/coach", () => {
   });
 
   it("preserves partial output when Gemini errors mid-stream", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
     mockGenerateContentStream.mockResolvedValue(
       (async function* () {

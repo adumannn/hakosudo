@@ -5,7 +5,7 @@ import { Masthead } from "@/components/Masthead";
 import { SkinChip } from "@/components/skins/SkinChip";
 import { CityPicker } from "@/components/profile/CityPicker";
 import { Landing } from "@/components/landing/Landing";
-import { createServerClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/auth/identity";
 import { todayUTC, formatTime } from "@/lib/utils";
 import { dateLine, weekdayJp } from "@/lib/kanji";
 import { computeDailySnapshot, computeCityCounts } from "@/lib/stats/leaderboard";
@@ -102,17 +102,11 @@ export default async function Home() {
   // Resolve skin and prefetch profiles.city in parallel — both are only
   // needed on the signed-in branch, so we keep them off the signed-out
   // path's critical render.
-  const sb = createServerClient();
-  const [skin, profileForCity] = await Promise.all([
+  const [skin, profile] = await Promise.all([
     resolveActiveSkinServer({ surface: "home", viewer }),
-    sb
-      .from("profiles")
-      .select("city")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then((r) => r.data),
+    getProfile(),
   ]);
-  const profileCity: string | null = profileForCity?.city ?? null;
+  const profileCity: string | null = profile?.city ?? null;
 
   // Popular city list for the home banner picker (signed-in only).
   let popularCities: { city: string; count: number }[] = [];

@@ -1,5 +1,5 @@
 "use server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 
 export async function saveGame(input: {
   givens: string;
@@ -13,8 +13,7 @@ export async function saveGame(input: {
   hints: number;
   complete: boolean;
 }) {
-  const sb = createServerClient();
-  const { data: { user } } = await sb.auth.getUser();
+  const { user, sb } = await getCurrentUser();
   if (!user) return { ok: false as const, reason: "anon" as const };
 
   const { error } = await sb.from("games").upsert(

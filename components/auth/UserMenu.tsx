@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,8 +12,7 @@ import {
 import { SignOutButton } from "./SignOutButton";
 
 export async function UserMenu() {
-  const sb = createServerClient();
-  const { data: { user } } = await sb.auth.getUser();
+  const { user } = await getCurrentUser();
 
   if (!user) {
     return (

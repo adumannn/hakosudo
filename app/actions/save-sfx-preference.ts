@@ -1,14 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 
 export async function saveSfxPreference(input: { enabled: boolean }) {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-
+  const { user, sb } = await getCurrentUser();
   if (!user) return { ok: false as const, error: "auth" as const };
 
   const { data, error } = await sb

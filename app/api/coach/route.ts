@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser, getProfile } from "@/lib/auth/identity";
 import { SYSTEM_PROMPT, userMessage, fallbackVoice, type CoachKind, type CoachPayload } from "@/lib/coach/prompt";
 import { checkAndIncrement } from "@/lib/coach/usage";
 import { findHintForCell } from "@/lib/sudoku/techniques";
@@ -21,11 +21,7 @@ function isValidBody(b: unknown): b is { board: number[]; target: number; kind: 
 
 export async function POST(req: NextRequest) {
   // 1. Auth first (cheap; rejects unauthenticated requests before parsing)
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  const user = session?.user;
+  const { user } = await getCurrentUser();
   if (!user) return new Response("Sign in to use the coach", { status: 401 });
 
   // 2. Parse + validate body
@@ -39,11 +35,7 @@ export async function POST(req: NextRequest) {
   const { board, target, kind } = body;
 
   // 3. Profile fetch (needed for tier-aware engine call)
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("is_pro")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await getProfile();
   const isPro = !!profile?.is_pro;
 
   // 4. Engine first — quota is only consumed if Gemini is actually called.

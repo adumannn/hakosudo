@@ -1,14 +1,11 @@
 "use server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { revalidatePath } from "next/cache";
 
 const HANDLE_RE = /^[a-z0-9_-]{2,20}$/;
 
 export async function saveUsername(input: { username: string }) {
-  const sb = createServerClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+  const { user, sb } = await getCurrentUser();
   if (!user) return { ok: false as const, error: "auth" as const };
 
   const normalized = input.username.trim().toLowerCase();

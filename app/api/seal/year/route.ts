@@ -1,6 +1,6 @@
 // app/api/seal/year/route.ts
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { assembleYearSeries } from "@/lib/seal/year";
 import { fillCalendarYear, type CalendarEntry } from "@/lib/seal/calendar";
 import { todayUTC } from "@/lib/utils";
@@ -9,14 +9,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  if (!session?.user) {
+  const { user, sb } = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "auth" }, { status: 401 });
   }
-  const userId = session.user.id;
+  const userId = user.id;
 
   const today = todayUTC();
   const year = parseInt(today.slice(0, 4), 10);

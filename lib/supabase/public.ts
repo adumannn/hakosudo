@@ -1,15 +1,17 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * Cookie-less anon Supabase client for queries that don't depend on the
- * viewer (e.g. public reads cached cross-request via unstable_cache).
- *
- * Cannot be used inside unstable_cache when the underlying client touches
- * cookies — that's what this client avoids. Returns a stub on missing env
- * so cached callers degrade to empty data instead of crashing.
- */
 let cached: SupabaseClient | null | undefined;
 
+/**
+ * Cookieless anonymous Supabase client.
+ *
+ * **Use in:** cached read paths that don't depend on user identity, such
+ * as the skins catalog or the daily seal calendar. Compatible with
+ * `next/cache`'s `unstable_cache` (no `cookies()` reads inside).
+ *
+ * **Don't use in:** user-scoped reads — use `createServerClient` (or the
+ * helpers in `lib/auth/identity.ts`) so RLS sees the authenticated user.
+ */
 export function createPublicClient(): SupabaseClient | null {
   if (cached !== undefined) return cached;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
