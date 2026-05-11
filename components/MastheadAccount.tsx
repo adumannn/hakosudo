@@ -11,6 +11,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const menuLinkClass =
+  "rounded-none cursor-pointer focus:bg-rice focus:text-sumi data-[highlighted]:bg-rice data-[highlighted]:text-sumi hover:bg-rice hover:text-sumi";
+
 export function MastheadAccount({
   initial,
   email,
@@ -65,7 +68,7 @@ export function MastheadAccount({
           {email}
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-sumi/15 m-0" />
-        <DropdownMenuItem asChild className="rounded-none focus:bg-rice cursor-pointer">
+        <DropdownMenuItem asChild className={menuLinkClass}>
           <Link
             href="/profile"
             className="mincho text-[14px] text-sumi px-3 py-2.5 block"
@@ -73,15 +76,15 @@ export function MastheadAccount({
             Profile
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="rounded-none focus:bg-rice cursor-pointer">
+        <DropdownMenuItem asChild className={menuLinkClass}>
           <Link
             href="/account"
             className="mincho text-[14px] text-sumi px-3 py-2.5 block"
           >
-            Account
+            Settings
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="rounded-none focus:bg-rice cursor-pointer">
+        <DropdownMenuItem asChild className={menuLinkClass}>
           <Link
             href="/achievements"
             className="mincho text-[14px] text-sumi px-3 py-2.5 block"
@@ -92,7 +95,7 @@ export function MastheadAccount({
         <DropdownMenuSeparator className="bg-sumi/15 m-0" />
         <DropdownMenuItem
           onSelect={onSignOut}
-          className="rounded-none focus:bg-vermillion focus:text-bone cursor-pointer mincho text-[14px] text-vermillion px-3 py-2.5"
+          className="rounded-none focus:bg-vermillion focus:text-bone data-[highlighted]:bg-vermillion data-[highlighted]:text-bone hover:bg-vermillion hover:text-bone cursor-pointer mincho text-[14px] text-vermillion px-3 py-2.5"
         >
           Sign out
         </DropdownMenuItem>
