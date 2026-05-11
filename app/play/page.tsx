@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Masthead } from "@/components/Masthead";
 import { SkinChip } from "@/components/skins/SkinChip";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +13,7 @@ const TIERS = [
 ];
 
 export default async function CasualLanding() {
-  const sb = createServerClient();
-  const { data: { user } } = await sb.auth.getUser();
+  const { user } = await getCurrentUser();
   const initial = user?.email?.[0] ?? "·";
 
   return (

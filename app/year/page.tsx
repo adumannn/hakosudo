@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { Masthead } from "@/components/Masthead";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { todayUTC } from "@/lib/utils";
 import { dateLine } from "@/lib/kanji";
 import { YearStats } from "./YearStats";
@@ -15,11 +15,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function YearPage() {
-  const sb = createServerClient();
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  const user = session?.user;
+  const { user } = await getCurrentUser();
   const initial = user?.email?.[0] ?? "·";
   const today = todayUTC();
   const year = parseInt(today.slice(0, 4), 10);

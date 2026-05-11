@@ -1,6 +1,6 @@
 // app/leaderboard/page.tsx
 import { Suspense } from "react";
-import { createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/identity";
 import { todayUTC } from "@/lib/utils";
 import { Masthead } from "@/components/Masthead";
 import { LeaderboardPanel } from "./LeaderboardPanel";
@@ -15,15 +15,12 @@ export default async function Leaderboard({
 }: {
   searchParams: { city?: string; date?: string; range?: Range };
 }) {
-  const sb = createServerClient();
   const date = searchParams.date ?? todayUTC();
   const cityFilterRaw = searchParams.city ?? null;
   const cityFilter = cityFilterRaw ? cityFilterRaw.trim().toLowerCase() : null;
   const range: Range = searchParams.range ?? "today";
 
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+  const { user } = await getCurrentUser();
   const username = user?.email?.split("@")[0] ?? null;
   const initial = user?.email?.[0] ?? "·";
 
