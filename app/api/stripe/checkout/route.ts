@@ -4,8 +4,14 @@ import { getCurrentUser } from "@/lib/auth/identity";
 
 export async function POST() {
   const { user } = await getCurrentUser();
-  if (!user)
-    return NextResponse.redirect(new URL("/auth/login", process.env.NEXT_PUBLIC_SITE_URL!), { status: 303 });
+  if (!user) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (!siteUrl) {
+      console.error("[stripe/checkout] missing NEXT_PUBLIC_SITE_URL");
+      return NextResponse.json({ error: "checkout temporarily unavailable" }, { status: 503 });
+    }
+    return NextResponse.redirect(new URL("/auth/login", siteUrl), { status: 303 });
+  }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   const session = await stripe.checkout.sessions.create({
