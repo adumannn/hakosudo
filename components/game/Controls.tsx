@@ -16,7 +16,7 @@ export function Controls() {
   const giveHint = () => {
     const h = findHint(board);
     if (h) {
-      hint(h.index, h.value);
+      if (h.value !== null) hint(h.index, h.value);
       return;
     }
     const i = board.findIndex((v) => v === 0);

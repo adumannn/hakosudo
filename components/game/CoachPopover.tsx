@@ -12,9 +12,7 @@ export function SenseiBody({ mode = "ask", compact = false }: SenseiBodyProps) {
   const board = useGame((s) => s.board);
   const selected = useGame((s) => s.selected);
   const givens = useGame((s) => s.givens);
-  const [text, setText] = useState<string>(
-    "Look at the middle-right box. The 7 can only live in one place — R6C8. Place it, and column 8 collapses."
-  );
+  const [text, setText] = useState<string>("Select a cell, then ask for a nudge.");
   const [busy, setBusy] = useState(false);
   const [streaming, setStreaming] = useState(false);
 
