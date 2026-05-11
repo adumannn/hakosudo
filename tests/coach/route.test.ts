@@ -160,4 +160,35 @@ describe("POST /api/coach", () => {
     const callArg = mockGenerateContentStream.mock.calls[0][0];
     expect(callArg.contents).toContain("Mode: downgrade");
   });
+
+  it("falls back to engine voice when Gemini errors before emitting a token", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
+    mockGenerateContentStream.mockRejectedValue(new Error("rate limit exceeded"));
+    const board = Array(81).fill(0);
+    for (let r = 1; r <= 8; r++) board[r * 9] = r + 1;
+    const res = await POST(makeReq({ board, target: 0, kind: "ask" }));
+    expect(res.status).toBe(200);
+    const text = await readStream(res);
+    // Engine reason for naked-single at (0,0): "Cell R1C1 has only one possible digit (1)."
+    expect(text).toContain("R1C1");
+    expect(text).not.toContain("Sensei is offline");
+  });
+
+  it("preserves partial output when Gemini errors mid-stream", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    mockCheckAndIncrement.mockResolvedValue({ ok: true, remaining: 19 });
+    mockGenerateContentStream.mockResolvedValue(
+      (async function* () {
+        yield { text: "Look at " };
+        throw new Error("stream broke");
+      })(),
+    );
+    const board = Array(81).fill(0);
+    for (let r = 1; r <= 8; r++) board[r * 9] = r + 1;
+    const res = await POST(makeReq({ board, target: 0, kind: "ask" }));
+    const text = await readStream(res);
+    // Partial Gemini output preserved; no fallback appended.
+    expect(text).toBe("Look at ");
+  });
 });

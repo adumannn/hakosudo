@@ -69,3 +69,22 @@ export function userMessage(payload: CoachPayload, kind: CoachKind): string {
 function redirectLine(from: number, to: number) {
   return `Original target was ${cellName(from)}; suggesting ${cellName(to)} instead.`;
 }
+
+/** Engine-only fallback when Gemini is unavailable. The engine already
+ * produces a complete, correct hint; Gemini is just the voice layer.
+ * In nudge mode this must not name cells or digits. */
+export function fallbackVoice(payload: CoachPayload, kind: CoachKind): string {
+  if (payload.kind === "downgrade") {
+    if (kind === "ask" && payload.redirect) {
+      return `This position needs a Pro technique. Try ${cellName(payload.redirect.index)} instead — it has a clearer move.`;
+    }
+    return "This position needs a Pro technique. Try a different cell.";
+  }
+  const { hint } = payload;
+  if (kind === "ask") {
+    return hint.reason;
+  }
+  // Nudge: engine reason names cells and digits, so build a generic line.
+  const where = hint.unit.startsWith("cell ") ? "" : ` in ${hint.unit}`;
+  return `Look for a ${hint.technique}${where}.`;
+}

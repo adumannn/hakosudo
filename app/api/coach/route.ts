@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { SYSTEM_PROMPT, userMessage, type CoachKind, type CoachPayload } from "@/lib/coach/prompt";
+import { SYSTEM_PROMPT, userMessage, fallbackVoice, type CoachKind, type CoachPayload } from "@/lib/coach/prompt";
 import { checkAndIncrement } from "@/lib/coach/usage";
 import { findHintForCell } from "@/lib/sudoku/techniques";
 
@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const sse = new ReadableStream({
     async start(ctrl) {
+      let emitted = false;
       try {
         const stream = await ai.models.generateContentStream({
           model: GEMINI_MODEL,
@@ -90,11 +91,19 @@ export async function POST(req: NextRequest) {
         });
         for await (const chunk of stream) {
           const text = chunk.text;
-          if (text) ctrl.enqueue(encoder.encode(text));
+          if (text) {
+            ctrl.enqueue(encoder.encode(text));
+            emitted = true;
+          }
         }
       } catch (e) {
         console.error("[coach] gemini error:", e);
-        ctrl.enqueue(encoder.encode("\n[error] Sensei is offline."));
+        // Gemini is just the voice layer — the engine already produced a
+        // correct hint. Fall back to the engine voice if Gemini failed
+        // before we streamed anything; otherwise leave the partial response.
+        if (!emitted) {
+          ctrl.enqueue(encoder.encode(fallbackVoice(payload, kind)));
+        }
       } finally {
         ctrl.close();
       }

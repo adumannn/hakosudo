@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SYSTEM_PROMPT, userMessage } from "@/lib/coach/prompt";
+import { SYSTEM_PROMPT, userMessage, fallbackVoice } from "@/lib/coach/prompt";
 import type { Hint } from "@/lib/sudoku/techniques";
 
 const nakedSingle: Hint = {
@@ -148,5 +148,50 @@ describe("userMessage — downgrade payload", () => {
     expect(msg).toContain("Mode: downgrade");
     expect(msg).not.toContain("Original target");
     expect(msg).not.toContain("Suggested cell:");
+  });
+});
+
+describe("fallbackVoice", () => {
+  it("ask returns the engine reason verbatim", () => {
+    const msg = fallbackVoice({ kind: "hint", hint: hiddenSingle }, "ask");
+    expect(msg).toBe(hiddenSingle.reason);
+  });
+
+  it("nudge does not name the cell or digit", () => {
+    const msg = fallbackVoice({ kind: "hint", hint: hiddenSingle }, "nudge");
+    expect(msg).not.toContain("R2C5");
+    expect(msg).not.toContain("7");
+    expect(msg).toContain("hidden-single");
+    expect(msg).toContain("row 2");
+  });
+
+  it("nudge for naked-single omits the cell-shaped unit", () => {
+    const msg = fallbackVoice({ kind: "hint", hint: nakedSingle }, "nudge");
+    expect(msg).not.toContain("R1C1");
+    expect(msg).toContain("naked-single");
+  });
+
+  it("downgrade ask names the redirect cell", () => {
+    const msg = fallbackVoice(
+      { kind: "downgrade", redirect: { ...nakedSingle, redirect: true } },
+      "ask",
+    );
+    expect(msg).toContain("R1C1");
+    expect(msg).toMatch(/Pro/i);
+  });
+
+  it("downgrade nudge does not name a cell", () => {
+    const msg = fallbackVoice(
+      { kind: "downgrade", redirect: { ...nakedSingle, redirect: true } },
+      "nudge",
+    );
+    expect(msg).not.toContain("R1C1");
+    expect(msg).toMatch(/Pro/i);
+  });
+
+  it("downgrade with no redirect still produces a usable line", () => {
+    const msg = fallbackVoice({ kind: "downgrade", redirect: null }, "ask");
+    expect(msg.length).toBeGreaterThan(0);
+    expect(msg).toMatch(/Pro/i);
   });
 });
