@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Seal } from "@/components/year-scroll/Seal";
+import { FreezeSheet } from "@/components/freezes/FreezeSheet";
 import { formatTime } from "@/lib/utils";
 
 interface TodaySeal {
@@ -17,8 +18,13 @@ interface Props {
   today: TodaySeal | null;
   /** When set, today has been completed and we render the post-solve variant. */
   completedElapsed?: number;
-  /** Optional: yesterday missed + freezes-remaining; if both present, show prompt. */
-  freezePrompt?: { date: string; kanji: string; remaining: number } | null;
+  /** Optional: yesterday missed + balances; if present, show prompt with branched CTA. */
+  freezePrompt?: {
+    date: string;
+    kanji: string;
+    allotmentRemaining: number;
+    credits: number;
+  } | null;
   /** Vertical Japanese day label (e.g. 土曜日) for the left margin. */
   tategakiDay?: string;
 }
@@ -30,6 +36,7 @@ export function TodayCard({
   tategakiDay,
 }: Props) {
   const [freezeStatus, setFreezeStatus] = useState<"idle" | "pending" | "done" | "error">("idle");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (!today) {
     return (
@@ -47,12 +54,16 @@ export function TodayCard({
   const applyFreeze = async () => {
     if (!freezePrompt) return;
     setFreezeStatus("pending");
-    const res = await fetch("/api/seal/freeze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: freezePrompt.date }),
-    });
-    setFreezeStatus(res.ok ? "done" : "error");
+    try {
+      const res = await fetch("/api/seal/freeze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: freezePrompt.date }),
+      });
+      setFreezeStatus(res.ok ? "done" : "error");
+    } catch {
+      setFreezeStatus("error");
+    }
   };
 
   return (
@@ -127,13 +138,31 @@ export function TodayCard({
           {freezePrompt && freezeStatus === "idle" && (
             <div className="mt-5 border-t border-sumi/15 pt-4 text-[14px] ital text-sumi max-w-[44ch]">
               yesterday — {freezePrompt.kanji} — missed.{" "}
-              <button
-                onClick={applyFreeze}
-                className="text-vermillion underline underline-offset-4 mono not-italic text-[11px] tracking-[0.14em] uppercase"
-              >
-                apply freeze
-              </button>{" "}
-              <span className="text-moss text-[11px]">· {freezePrompt.remaining} left</span>
+              {freezePrompt.allotmentRemaining + freezePrompt.credits > 0 ? (
+                <>
+                  <button
+                    onClick={applyFreeze}
+                    className="text-vermillion underline underline-offset-4 mono not-italic text-[11px] tracking-[0.14em] uppercase"
+                  >
+                    apply freeze
+                  </button>{" "}
+                  <span className="text-moss text-[11px] not-italic mono tracking-[0.14em]">
+                    · {freezePrompt.allotmentRemaining} monthly · {freezePrompt.credits} credits
+                  </span>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setSheetOpen(true)}
+                    className="text-vermillion underline underline-offset-4 mono not-italic text-[11px] tracking-[0.14em] uppercase"
+                  >
+                    buy a freeze
+                  </button>{" "}
+                  <span className="text-moss text-[11px] not-italic mono tracking-[0.14em]">
+                    · $1 keeps your streak
+                  </span>
+                </>
+              )}
             </div>
           )}
           {freezeStatus === "pending" && (
@@ -151,6 +180,13 @@ export function TodayCard({
           )}
         </div>
       </div>
+      <FreezeSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        balance={freezePrompt?.credits ?? 0}
+        isPro={false}
+        allotmentRemaining={0}
+      />
     </div>
   );
 }

@@ -162,6 +162,7 @@ describe("getProfile", () => {
         username: "alice",
         sfx_enabled: true,
         created_at: "2026-01-01T00:00:00Z",
+        freeze_credits: 3,
       },
       error: null,
     });
@@ -170,6 +171,7 @@ describe("getProfile", () => {
     const result = await getProfile();
 
     expect(result?.city).toBe("tokyo");
+    expect(result?.freeze_credits).toBe(3);
     expect(from).toHaveBeenCalledWith("profiles");
   });
 

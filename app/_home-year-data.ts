@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { createServerClient } from "@/lib/supabase/server";
 import { computeUnifiedStreak } from "@/lib/seal/streak";
-import { computeAllotment } from "@/lib/seal/freeze";
+import { computeAllotment, hasRecoverableStreak } from "@/lib/seal/freeze";
 import { assembleYearSeries } from "@/lib/seal/year";
 import { fillCalendarYear, type CalendarEntry } from "@/lib/seal/calendar";
 import type { YearSeries } from "@/lib/seal/types";
@@ -12,7 +12,12 @@ export interface HomeYearData {
   yearFilled: number;
   yearTotal: number;
   completedTodayElapsed: number | undefined;
-  freezePrompt: { date: string; kanji: string; remaining: number } | null;
+  freezePrompt: {
+    date: string;
+    kanji: string;
+    allotmentRemaining: number;
+    credits: number;
+  } | null;
 }
 
 /**
@@ -50,7 +55,7 @@ export const fetchHomeYearData = cache(async (
     sb.from("streak_freezes").select("date")
       .eq("user_id", userId)
       .gte("date", yearStart).lte("date", yearEnd),
-    sb.from("profiles").select("created_at,is_pro,city").eq("id", userId).maybeSingle(),
+    sb.from("profiles").select("created_at,is_pro,city,freeze_credits").eq("id", userId).maybeSingle(),
     sb.from("daily_puzzles")
       .select("date, skin_id, skins(seal_kanji)")
       .gte("date", yearStart).lte("date", yearEnd),
@@ -84,23 +89,34 @@ export const fetchHomeYearData = cache(async (
   const yearTotal = series.seals.length;
   const completedTodayElapsed = completedByDate.get(today);
 
-  let freezePrompt: { date: string; kanji: string; remaining: number } | null = null;
-  if (profile?.is_pro) {
+  let freezePrompt: HomeYearData["freezePrompt"] = null;
+  if (profile) {
     const yest = new Date(today + "T00:00:00Z");
     yest.setUTCDate(yest.getUTCDate() - 1);
     const yestStr = yest.toISOString().slice(0, 10);
     const yestEntry = series.seals.find((s) => s.date === yestStr);
-    if (yestEntry?.state === "empty") {
-      const granted = `${yestStr.slice(0, 7)}-01`;
-      const { count } = await sb
-        .from("streak_freezes")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .eq("granted_month", granted);
-      const used = count ?? 0;
-      const allotment = computeAllotment(profile.created_at, granted);
-      const remaining = Math.max(0, allotment - used);
-      if (remaining > 0) freezePrompt = { date: yestStr, kanji: yestEntry.kanji, remaining };
+    if (
+      yestEntry?.state === "empty" &&
+      hasRecoverableStreak(series.seals, today)
+    ) {
+      let allotmentRemaining = 0;
+      if (profile.is_pro) {
+        const granted = `${yestStr.slice(0, 7)}-01`;
+        const { count } = await sb
+          .from("streak_freezes")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("granted_month", granted);
+        const used = count ?? 0;
+        const allotment = computeAllotment(profile.created_at, granted);
+        allotmentRemaining = Math.max(0, allotment - used);
+      }
+      freezePrompt = {
+        date: yestStr,
+        kanji: yestEntry.kanji,
+        allotmentRemaining,
+        credits: profile.freeze_credits,
+      };
     }
   }
 
