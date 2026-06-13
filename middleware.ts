@@ -2,6 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasSupabaseAuthCookie } from "@/lib/supabase/auth-cookie";
+import { withTimeout } from "@/lib/promise/with-timeout";
+
+// Hard ceiling on the auth-token refresh. A healthy round-trip to Supabase is
+// well under this; the cap exists so a slow or hung call can never push the
+// middleware past the platform's invocation timeout (504) and take the whole
+// site down. On timeout we fall through to the catch and serve the page —
+// protected routes still re-validate auth downstream via the server client.
+const AUTH_REFRESH_TIMEOUT_MS = 3000;
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next({ request: req });
@@ -26,10 +34,11 @@ export async function middleware(req: NextRequest) {
         },
       },
     });
-    await sb.auth.getUser();
+    await withTimeout(sb.auth.getUser(), AUTH_REFRESH_TIMEOUT_MS);
   } catch (err) {
-    // Network blip, cookie corruption, key mismatch — none of these should
-    // bring down the whole site. Log for observability and serve the page.
+    // Network blip, cookie corruption, key mismatch, or a stalled call that
+    // blew past AUTH_REFRESH_TIMEOUT_MS — none of these should bring down the
+    // whole site. Log for observability and serve the page.
     console.error("[middleware] supabase getUser failed:", err);
   }
 
